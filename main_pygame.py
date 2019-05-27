@@ -27,7 +27,7 @@ def main():
 
     #create a car: random style
     # TODO create multiple cars, organized goals
-    carsNum = 30
+    carsNum = 100
     stepsNum = 1
     carList = [cars.Car(graph) for i in range(carsNum)]
     
