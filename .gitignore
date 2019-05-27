@@ -1,4 +1,3 @@
-cars.pyc
-graphGen.pyc
-main_pygame.pyc
-*.pyc
+*\.pyc
+\.vscode
+
