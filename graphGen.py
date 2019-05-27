@@ -104,6 +104,14 @@ class Graph:
             x1, y1 = self.nodes[p1]["coords"]
             x2, y2 = self.nodes[p2]["coords"]
             self.edges[i]["length"] = int(np.sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) ))
+
+    def genEdgeSpeeds(self):
+        """
+        Randomly assigns speed limits for all edges. Ints between 30 and 70.        
+        """
+        for i in self.edges.keys():
+            self.edges[i]["speed"] = np.random.randint(30, 71)
+
         
 
 
