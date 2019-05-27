@@ -11,14 +11,14 @@ class Position:
     At initialization, calls first node index nodeFrom, second nodeTo: be clear about the direction. \n
     Distance is always measured from lower-index node, regardless of direction of travel.
     Makes reference to whatever graph is passed at initialization.
-    True direction means nodeTo has higher index than nodeFrom; False means the opposite
+    direction = True means nodeTo has higher index than nodeFrom; False means the opposite
     """
     # Should be based either on a single node or on two nodes and progress along edge
     # Should have an equals operator, so that car's positions can be compared
     # Note: equivalence operator will allow for approximate equals, so that it can be used to check if cars are overlapping
     
 
-    def __init__(self, graph, node1, node2, dist = 0, eqTol = 10):
+    def __init__(self, graph, nodeFrom, nodeTo, dist = 0, eqTol = 10):
         """
         Takes graph, two integers and a float, indicating node indices and distance along edge
         Graph is stored (by reference).
@@ -32,8 +32,8 @@ class Position:
         s.dist = dist
 
         # store nodes, check direction of travel and set appropriate booleans
-        s.nodeFrom = node1
-        s.nodeTo = node2
+        s.nodeFrom = nodeFrom
+        s.nodeTo = nodeTo
         if s.nodeTo > s.nodeFrom:
             s.direction = True
             s.atNode = False
@@ -68,15 +68,17 @@ class Position:
 
     # equivalence operator (==)
     def __eq__(self, other):
-        # TODO
+        
+        # Two positions are considered equal if they have the same direction, travel nodes, and are within eqTol of each other
         if self.direction == other.direction:
             if self.nodeFrom == other.nodeFrom and self.nodeTo == other.nodeTo:
                 if abs(self.dist - other.dist) <= eqTol:
                     return True
-        else:
-            if self.nodeFrom == other.nodeTo and self.nodeTo == other.nodeFrom:
-                if abs(self.dist - other.dist) <= eqTol:
-                    return True
+        # The following block would equality of position if traveling in opposite directions at same place
+        # else:
+        #     if self.nodeFrom == other.nodeTo and self.nodeTo == other.nodeFrom:
+        #         if abs(self.dist - other.dist) <= eqTol:
+        #             return True
         return False
 
     # nonequivalence operator (!=) (required by Python 2)
@@ -90,15 +92,21 @@ class Position:
         Adds displacement to distance along edge in the appropriate direction
         Updates values: dist, xPos, yPos, coords, atNode
         """
+
+        #check if car is on an edge, throw error otherwise
         if self.atNode:
             raise ValueError("A car at a node cannot move, it needs a new destination node")
 
-        self.dist += displace if direction else -= displace
+        # Move car along edge in correct direction
+        self.dist = self.dist + displace if direction else self.dist - displace
+
+        # Interpolate to recalculate other coordinates
         prog = self.dist / float(self.length)
         self.xPos = int(prog * self.fromCoords[0] + (1-prog) * self.toCoords[0])
         self.yPos = int(prog * self.fromCoords[1] + (1-prog) * self.toCoords[1])
         self.coords = (self.xPos, self.yPos)
 
+        # if the new position is at or past the node on the edge, then set atNode=True
         if self.dist <= 0 or self.dist >= self.length:
             self.atNode = True
     
@@ -115,20 +123,30 @@ class Position:
 # Car class: designed to be independent of visualization system
 # Depends on the above Position class
 class Car:
-    
-    def __init__(self, graph, startGiven = False, pos = 0):
-        """
-        graph argument: a fully built graph. Will be stored by reference in the car's data
-        startGiven: defaults to False. If false, randomly generates starting position
-        position: defaults to 0, not used. If startGiven True, should be an instance of Position class.
-        """
+    """
+    Simulates a car moving along the graph.
+    graph argument: a fully built graph. Will be stored by reference in the car's data
+    randomBehavior:
+    startGiven: defaults to False. If false, randomly generates starting position
+    position: defaults to 0, not used. If startGiven True, should be an instance of Position class.
+    """
+    def __init__(self, graph, startGiven = False, randomBehavior = True, pos = 0):
 
         self.graph = graph
-        if startGiven:
+        self.randomBehavior = randomBehavior
+        self.pos = pos
+
+        if not randomBehavior:
             # TODO
             pass
         else:
             startNode = np.random.randint(0, graph.size)
+    
+    def updatePosition():
+        if not randomBehavior:
+            # TODO
+            pass
+        
 
         
 
