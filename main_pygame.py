@@ -7,66 +7,34 @@ import cars
 
 def main():
 
-    # initialize pygame
-    pygame.init()
-    # set up the top bar of the window
-    logo = pygame.image.load("32x32CNRIIA.jpg")
-    pygame.display.set_icon(logo)
-    pygame.display.set_caption("macchine che muovono")
-
     # window size to be used by pygame
+    # gets used in a number of functions, as it turns out
     size = (800, 800)
-
-    # create/import the graph
-    # TODO: encapsulate this better
-
-    graph = graphGen.Graph(8)
-    graph.makeCoords8nodes(size)
-    graph.calcEdgeLengths()
-    graph.genEdgeSpeeds()
-
-    #create a car: random style
-    # TODO create multiple cars, organized goals
-    carsNum = 100
+    # configurable values used when generating cars
+    carsNum = 60
     stepsNum = 1
-    carList = [cars.Car(graph) for i in range(carsNum)]
-    
+    carAccel = 5
 
-    # draw the map (TODO: encapsulate this better)
+    start_pygame()
+
+    graph = graphGen.Graph(8, weighted=True)
+    graph_init(graph, size)
+
+    #create cars: random style
+    # TODO: nonrandom cars & goals
+    carList = [cars.Car(graph, randomBehavior = True, accel = carAccel) for i in range(carsNum)]
+
+    # draw the map  
     map = pygame.Surface(size)
-    WHITE = pygame.Color("white")
-    BLACK = pygame.Color("black")
-    RED = pygame.Color("red")
-    map.fill(WHITE)
-    font = pygame.freetype.SysFont("Times New Roman", 12)
-
-    # drawing the map: this portion is specified to graphGen's graph structure
-    for i, n in enumerate(graph.nodes):
-        pygame.draw.circle(map, BLACK, n["coords"], 7)
-        font.render_to(map, (n["coords"][0] + 10, n["coords"][1]), str(i), pygame.Color("black"))
-
-    pygame.freetype.init()
-    
-
-    for e in graph.edges.keys(): 
-        lineArea = pygame.draw.line(map, BLACK, graph.nodes[e[0]]["coords"], graph.nodes[e[1]]["coords"], 3)
-
-        
-        # label all of the edge lengths
-        font.render_to(map, (lineArea.centerx + 5, lineArea.centery), str(int(graph.edges[e]["length"])))
-        
-
-    
-    
+    draw_map(graph, map)
 
     # create a window with the above specified size
     screen = pygame.display.set_mode(size)
 
     # copy the map as drawn to the window, update the display
+    # Start a list called dirtyRects: used below with pygame.display.update to avoid redrawing the whole screen every time
     dirtyRects = [screen.blit(map, (0, 0))]
     pygame.display.flip()
-
-    
 
     # variable for controlling the main() loop
     running = True
@@ -74,7 +42,7 @@ def main():
     # pygame Clock object for controlling the framerate and update speed
     clock = pygame.time.Clock()
 
-    # loop main
+    # main loop
     while running:
 
         # event handling: get all events since previous loop
@@ -86,33 +54,96 @@ def main():
                 running = False
         
         # update system state
-        for step in range(stepsNum):
-            for car in carList:
-                car.updatePosition()
+        update_system(stepsNum, carList, graph)           
 
 
         # draw system to screen
-        # TODO: wrap this
-
-        # draw the map again, to overwrite old car positions
-        screen.blit(map, (0, 0))
-
-        # Draw car to the screen
-        # Keeps a list of areas of the screen which have been updated
-        for car in carList:
-            dirtyRects.append(pygame.draw.circle(screen, RED, car.pos.coords, 5))
-
-        
-        # update the parts of the screen which have changed
-        pygame.display.update(dirtyRects[-carsNum*2:] )
+        update_screen(screen, map, carList, dirtyRects)
 
         # tick the system clock
         clock.tick(20) #framerate of 20 fps
 
+# -----------------------------------------------------
+# Encapsulation functions (just to make the main more readable)
+
+def start_pygame():
+    """
+    Encapsulates the functions which initialize a pygame window.
+    """
+
+    # initialize pygame
+    pygame.init()
+    # set up the top bar of the window
+    logo = pygame.image.load("32x32CNRIIA.jpg")
+    pygame.display.set_icon(logo)
+    pygame.display.set_caption("macchine che muovono")
+
+    # stat pygame's typesetting system
+    pygame.freetype.init()
+
+def graph_init(graph, size):
+    """
+    Encapsulates the functions which initialize the graph.
+    Takes window size as an argument.
+    """
+
+    # create/import the graph
+    # TODO: encapsulate this better
+
+    graph.makeCoords8nodes(size)
+    graph.calcEdgeLengths()
+    graph.genEdgeSpeeds()
+    
+def draw_map(graph, map):
+    """
+    Encapsulates the functions which draw the map to a pygame Surface object.
+    Takes the graph and a pygame Surface object as arguments.
+    """
+
+    WHITE = pygame.Color("white")
+    BLACK = pygame.Color("black")
+    RED = pygame.Color("red")
+    map.fill(WHITE)
+    font = pygame.freetype.SysFont("Times New Roman", 12)
+
+    # drawing the map: this portion is specified to graphGen's graph structure
+    for i, n in enumerate(graph.nodes):
+        pygame.draw.circle(map, pygame.Color("black"), n["coords"], 7)
+        font.render_to(map, (n["coords"][0] + 10, n["coords"][1]), str(i), pygame.Color("black"))
+
+    
+
+    for e in graph.edges.keys(): 
+        lineArea = pygame.draw.line(map, pygame.Color("black"), graph.nodes[e[0]]["coords"], graph.nodes[e[1]]["coords"], 3)
 
         
-        # 
+        # label all of the edge lengths
+        font.render_to(map, (lineArea.centerx + 5, lineArea.centery), str(int(graph.edges[e]["length"])))
 
+
+def update_system(stepsNum, carList, graph):
+    for step in range(stepsNum):
+        if graph.weighted:
+            graph.updateWeights()
+        for car in carList:
+            car.updatePosition()
+
+def update_screen(screenObj, mapObj, carList, dirtyRects):
+
+    # draw the map again, to overwrite old car positions
+    screenObj.blit(mapObj, (0, 0))
+
+    # Draw cars to the screen
+    # Keeps a list of areas of the screen which have been updated
+    for car in carList:
+        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255, car.velocity*8 if car.velocity*8 < 255 else 255, 0, 255), car.pos.coords, 5))
+
+    
+    # update the parts of the screen which have changed
+    dirtyRects = dirtyRects[-len(carList)*2:]
+    pygame.display.update(dirtyRects)
+
+# -------------------------------------------------
 
 if __name__=="__main__":
     main()
