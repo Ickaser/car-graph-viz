@@ -13,6 +13,7 @@ def main():
     # configurable values used when generating cars
     carsNum = 60
     stepsNum = 1
+    carAccel = 5
 
     start_pygame()
 
@@ -21,7 +22,7 @@ def main():
 
     #create cars: random style
     # TODO: nonrandom cars & goals
-    carList = [cars.Car(graph, randomBehavior = True, accel = 5) for i in range(carsNum)]
+    carList = [cars.Car(graph, randomBehavior = True, accel = carAccel) for i in range(carsNum)]
 
     # draw the map  
     map = pygame.Surface(size)

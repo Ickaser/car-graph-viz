@@ -76,11 +76,12 @@ class Position:
             s.yPos = int(prog * s.fromCoords[1] + (1-prog) * s.toCoords[1])
             s.coords = (s.xPos, s.yPos)
 
-        # vars to update always: atNode, dist, xPos, yPos, coords
-        # vars to update at node change: fromCoords, toCoords, length, direction
-
+        # if graph is weighted, add 1 to population on road
         if s.graph.weighted:
             graph.edges[(s.nodeFrom, s.nodeTo)]["population"][s.direction] += 1
+
+        # vars to update always: atNode, dist, xPos, yPos, coords
+        # vars to update at node change: fromCoords, toCoords, length, direction
 
 
     # equivalence operator (==)
@@ -135,6 +136,7 @@ class Position:
     def changeNodes(self, newNode):
         """
         Give the car a new destination node. Fails if the car is not at its destination node.
+        If the graph has weighted=True, moves weighting from old edge to new edge.
         Calls the init method to recalculate all values.
         """
         if not self.atNode:
@@ -160,11 +162,10 @@ class Car:
     Simulates a car moving along the graph.
     graph argument: a fully built graph. Will be stored by reference in the car's data
     randomBehavior: Defaults to True. If false, should have goal. Not yet implemented.
-    startGiven: defaults to False. If false, randomly generates starting position
     accel: sets an overall acceleration, which serves as base for car velocity
-    position: defaults to 0, not used. If startGiven True, should be an instance of Position class.
+    pos: defaults to 0, not used. If is an instance of Position class and randomBehavior is False, should be a starting position.
     """
-    def __init__(self, graph, startGiven = False, randomBehavior = True, accel = 5, pos = 0):
+    def __init__(self, graph, randomBehavior = True, accel = 5, pos = 0):
 
         self.graph = graph
         self.randomBehavior = randomBehavior
