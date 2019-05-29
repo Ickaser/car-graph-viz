@@ -18,18 +18,19 @@ class Position:
     # Note: equivalence operator will allow for approximate equals, so that it can be used to check if cars are overlapping
     
 
-    def __init__(self, graph, nodeFrom, nodeTo, dist = 0, eqTol = 10):
+    def __init__(self, graph, nodeFrom, nodeTo, dist = 0, carSize = 5):
         """
         Takes graph, two integers indicating node indices and a distance along edge
         Graph is stored (by reference).
         If both indices are the same, places car at node and sets atNode = True.
         If indices are different, places car along edge and sets atNode = False.
         Third argument is distance along the edge from the departure node. Defaults to 0 (placed at node)
-        eqTol defaults to 10; sets tolerance for equals operator, related to size of cars (in pixels)
+        carSize: sets tolerance for equals operator and for car following
         """
         s = self
         s.graph = graph
-        s.eqTol = eqTol
+        s.eqTol = carSize
+        s.carSize = carSize
         s.lanes = graph.lanes
         
 
@@ -72,14 +73,10 @@ class Position:
             #interpolate between node coordinates to find position along edge
             s.fromCoords = s.graph.nodes[s.nodeFrom]["coords"]
             s.toCoords = s.graph.nodes[s.nodeTo]["coords"]
-            prog = s.dist / float(s.length)
+            prog = (self.toNext if self.direction else self.dist) / float(self.length)
             s.xPos = int(prog * s.fromCoords[0] + (1-prog) * s.toCoords[0])
             s.yPos = int(prog * s.fromCoords[1] + (1-prog) * s.toCoords[1])
             s.coords = (s.xPos, s.yPos)
-
-        # # if graph is weighted, add 1 to population on road
-        # if s.graph.weighted or s.lanes:
-        #     graph.edges[(s.nodeFrom, s.nodeTo)]["population"][s.direction].append(s)
 
         # vars to update always: atNode, dist, xPos, yPos, coords
         # vars to update at node change: fromCoords, toCoords, length, direction
@@ -150,7 +147,7 @@ class Position:
         #     self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][self.direction].remove(self)
         self.nodeFrom = self.nodeTo
         
-        self.__init__(self.graph, self.nodeTo, newNode, eqTol=self.eqTol)
+        self.__init__(self.graph, self.nodeTo, newNode, carSize=self.eqTol)
 
                 
 
@@ -169,7 +166,7 @@ class Car:
     pos: defaults to 0, not used. If is an instance of Position class and randomBehavior is False, should be a starting position.
     Gets lanes property from graph's lanes property.
     """
-    def __init__(self, graph, randomBehavior = True, accel = 5, pos = 0):
+    def __init__(self, graph, randomBehavior = True, carSize = 5, accel = 5, pos = 0):
 
         self.graph = graph
         self.randomBehavior = randomBehavior
@@ -177,6 +174,7 @@ class Car:
         self.accel = accel
         self.lanes = self.graph.lanes
         self.weighted = self.graph.weighted
+        self.carSize = carSize
 
         if not randomBehavior:
             # TODO
@@ -226,6 +224,7 @@ class Car:
             otherCars = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction]
 
             # Find the nearest car ahead, if there is one
+            # Idea: the list implementation means that this arithemetic could be avoided (just find the index on the list, get the lower index) TODO
             carAhead = False
             for car in otherCars:
                 # if no cars found ahead yet, but car is ahead:
@@ -240,19 +239,21 @@ class Car:
             # if a car is found ahead on the road, compute an appropriate velocity adjustment
             if carAhead:
                 veloDiff = nextCar.velocity - self.velocity
-    # MAGIC NUMBER WARNING
-                distDiff = nextCar.pos.toNext - self.pos.toNext - 5 # MAGIC NUMBER TODO
-    # MAGIC NUMBER WARNING
-                decelDist = self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel))) # removed +1 on second int
+                distDiff = self.pos.toNext - nextCar.pos.toNext - self.carSize     
+
+                decelDist = self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel+1))) # removed +1 on second int
                 
                 if veloDiff > self.accel:
                     self.velocity += self.accel
                 elif veloDiff < self.accel and veloDiff > 0:
                     self.velocity += veloDiff
                 elif veloDiff < 0 and distDiff <= decelDist:
-                    self.velocity -= self.accel
+                    self.velocity -= self.accel if self.velocity >= self.accel else self.velocity
+                    
                 elif veloDiff < 0 and distDiff > decelDist:
                     self.velocity += self.accel
+
+                
                 
 
         # Acceleration handling: calculate to next node (either no lanes, or no cars ahead)

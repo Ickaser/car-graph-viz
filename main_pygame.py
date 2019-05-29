@@ -15,7 +15,7 @@ def main():
     # gets used in a number of functions, as it turns out
     size = (800, 800)
     # configurable values used when generating cars
-    carsNum = 10
+    carsNum = 60
     stepsNum = 1
     carAccel = 5
     lanes = True
@@ -142,7 +142,14 @@ def update_screen(screenObj, mapObj, carList, dirtyRects):
     # Draw cars to the screen
     # Keeps a list of areas of the screen which have been updated
     for i, car in enumerate(carList):
-        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if i % 2 else "blue"), car.pos.coords, 5))
+        #keep exactly one of the following uncommented
+
+        #half red, half blue
+        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if i % 2 else "blue"), car.pos.coords, 5))
+        #red one way, blue the other
+        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, 5))
+        #red at stopped, more green at speed
+        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255, 3*car.velocity, 0, 255)), car.pos.coords, 5))
 
     
     # update the parts of the screen which have changed
