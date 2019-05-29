@@ -30,6 +30,7 @@ class Position:
         s = self
         s.graph = graph
         s.eqTol = eqTol
+        s.lanes = graph.lanes
         
 
         # store nodes, check direction of travel and set appropriate booleans
@@ -76,21 +77,23 @@ class Position:
             s.yPos = int(prog * s.fromCoords[1] + (1-prog) * s.toCoords[1])
             s.coords = (s.xPos, s.yPos)
 
-        # if graph is weighted, add 1 to population on road
-        if s.graph.weighted:
-            graph.edges[(s.nodeFrom, s.nodeTo)]["population"][s.direction] += 1
+        # # if graph is weighted, add 1 to population on road
+        # if s.graph.weighted or s.lanes:
+        #     graph.edges[(s.nodeFrom, s.nodeTo)]["population"][s.direction].append(s)
 
         # vars to update always: atNode, dist, xPos, yPos, coords
         # vars to update at node change: fromCoords, toCoords, length, direction
 
 
+# equivalence operator: created a bug with the population list's remove method. Uncomment only
+# if you are ready to implement a different list removal method
     # equivalence operator (==)
     def __eq__(self, other):
         
         # Two positions are considered equal if they have the same direction, travel nodes, and are within eqTol of each other
         if self.direction == other.direction:
             if self.nodeFrom == other.nodeFrom and self.nodeTo == other.nodeTo:
-                if abs(self.dist - other.dist) <= eqTol:
+                if abs(self.dist - other.dist) <= self.eqTol:
                     return True
         # The following block would give equality of position if traveling in opposite directions at same place
         # else:
@@ -142,9 +145,9 @@ class Position:
         if not self.atNode:
             raise ValueError("A car not at its destination node cannot change destination nodes")
 
-        # if using weighted graph behavior, update numbers of cars along street
-        if self.graph.weighted and self.nodeFrom != self.nodeTo:
-            self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][self.direction] -= 1
+        # # if using weighted graph behavior, update numbers of cars along street
+        # if self.graph.weighted and self.nodeFrom != self.nodeTo:
+        #     self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][self.direction].remove(self)
         self.nodeFrom = self.nodeTo
         
         self.__init__(self.graph, self.nodeTo, newNode, eqTol=self.eqTol)
@@ -164,6 +167,7 @@ class Car:
     randomBehavior: Defaults to True. If false, should have goal. Not yet implemented.
     accel: sets an overall acceleration, which serves as base for car velocity
     pos: defaults to 0, not used. If is an instance of Position class and randomBehavior is False, should be a starting position.
+    Gets lanes property from graph's lanes property.
     """
     def __init__(self, graph, randomBehavior = True, accel = 5, pos = 0):
 
@@ -171,6 +175,8 @@ class Car:
         self.randomBehavior = randomBehavior
         self.pos = pos
         self.accel = accel
+        self.lanes = self.graph.lanes
+        self.weighted = self.graph.weighted
 
         if not randomBehavior:
             # TODO
@@ -178,7 +184,15 @@ class Car:
         else:
             startNode = np.random.randint(0, graph.size)
             self.pos = Position(self.graph, startNode, startNode)
+
+            # for purposes of population, needs to already be at an edge and fully initialized at edge. Copied from below
+            self.pos.changeNodes(np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"]))
+            self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
+            self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
+
             self.velocity = 0
+        
+        
     
     def updatePosition(self):
         if not self.randomBehavior:
@@ -188,33 +202,82 @@ class Car:
         # if at node, randomly select another node from the nodes connected to the current node and set as destination
         # also get speed limit info from graph, store that; end the method here
         if self.pos.atNode:
+            # remove self from old population list, if using weights or lanes
+            if self.weighted or self.lanes:
+                self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].remove(self)
+
             self.pos.changeNodes(np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"]))
+
+            # add self to new population list, if using weights or lanes
+            if self.weighted or self.lanes:
+                self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
+
             self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
             return
         
         # along edge: update velocity, then move that far along edge
         # TODO: checking cars' positions amongst themselves
         
-        # distance required to decelerate completely
-        decelerate = self.accel * sum(range(int(self.velocity/self.accel+1)))
 
-        # if using weighted graph behavior, fetch weighted speed limit at each update
-        if self.graph.weighted:
-            self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["weighted speed"][self.pos.direction]
+        # To update velocity, there are two methods: with and without lanes implementation
+        # Acceleration handling: with collision avoidance
+        if self.lanes:        
+            # Get list of other cars on edge
+            otherCars = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction]
 
-        # if car has room to decelerate later, accelerate up to speed limit
-        if self.pos.toNext > self.velocity + self.accel +  decelerate:
-            if self.velocity <= self.speedLimit - self.accel:
-                self.velocity += self.accel
-            elif self.velocity < self.speedLimit:
-                self.velocity = self.speedLimit
+            # Find the nearest car ahead, if there is one
+            carAhead = False
+            for car in otherCars:
+                # if no cars found ahead yet, but car is ahead:
+                if carAhead == False and car.pos.toNext < self.pos.toNext:
+                    # call it the next car, and note that there is one
+                    nextCar = car
+                    carAhead = True
+                # if the car being examined is closer than the current nextCar, replace the current with the new
+                elif self.pos.toNext > car.pos.toNext and car.pos.toNext > nextCar.pos.toNext:
+                    nextCar = car
+            
+            # if a car is found ahead on the road, compute an appropriate velocity adjustment
+            if carAhead:
+                veloDiff = nextCar.velocity - self.velocity
+    # MAGIC NUMBER WARNING
+                distDiff = nextCar.pos.toNext - self.pos.toNext - 5 # MAGIC NUMBER TODO
+    # MAGIC NUMBER WARNING
+                decelDist = self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel))) # removed +1 on second int
+                
+                if veloDiff > self.accel:
+                    self.velocity += self.accel
+                elif veloDiff < self.accel and veloDiff > 0:
+                    self.velocity += veloDiff
+                elif veloDiff < 0 and distDiff <= decelDist:
+                    self.velocity -= self.accel
+                elif veloDiff < 0 and distDiff > decelDist:
+                    self.velocity += self.accel
+                
 
-        # if car is approaching node, begin decelerating
-        elif self.pos.toNext <= decelerate:
-            self.velocity -= self.accel
-        # if car is close, but going very slow, set velocity to 5
-        if self.pos.toNext <= 10 and self.velocity < 5:
-            self.velocity = 5
+        # Acceleration handling: calculate to next node (either no lanes, or no cars ahead)
+        if not self.lanes or not carAhead:
+
+            # distance required to decelerate completely
+            decelDist = self.accel * sum(range(int(self.velocity/self.accel+1)))
+    
+            # if using weighted graph behavior, fetch weighted speed limit at each update
+            if self.graph.weighted:
+                self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["weighted speed"][self.pos.direction]
+    
+            # if car has room to decelerate later, accelerate up to speed limit
+            if self.pos.toNext > self.velocity + self.accel +  decelDist:
+                if self.velocity <= self.speedLimit - self.accel:
+                    self.velocity += self.accel
+                elif self.velocity < self.speedLimit:
+                    self.velocity = self.speedLimit
+    
+            # if car is approaching node, begin decelerating
+            elif self.pos.toNext <= decelDist:
+                self.velocity -= self.accel
+            # if car is close, but going very slow, set velocity to 5
+            if self.pos.toNext <= 10 and self.velocity < 5:
+                self.velocity = 5
     
         # travel along edge
         self.pos.update(self.velocity)

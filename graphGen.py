@@ -11,11 +11,11 @@ class Graph:
     nodes: number of nodes on the graph (required, as currently implemented) \n
     xml: defaults to False. If True, imports graph structure from xml file (not yet implemented). \n
     weighted: defaults to False. If True, interacts with Position class in cars.py to keep track of number of cars
-    along given edge of the graph, taking direction into account as well
+    lanes: defaults to False. If True, interacts with Position class to keep track of cars
     """
 
 
-    def __init__(self, nodes, xml = False, weighted = False):
+    def __init__(self, nodes, xml = False, weighted = False, lanes = False):
         # create a list, with an empty dict for each node
         if xml:
             #do something else to import information from xml
@@ -26,6 +26,7 @@ class Graph:
         self.edges = {}
         
         self.weighted = weighted
+        self.lanes = lanes
 
 
     def connect(self, point1, point2):
@@ -56,8 +57,8 @@ class Graph:
             # if using weighted behavior, set an attribute of dictionary for tracking number of cars on street
             # list has two items: one for each direction on the edge
             
-            if self.weighted:
-                self.edges[nodeNumsUp]["population"] = [0, 0]
+            if self.weighted or self.lanes:
+                self.edges[nodeNumsUp]["population"] = [[], []]
 
         
         # edge structure: dict of dicts, first is keyed by connected nodes and second is keyed by attributes of edge
@@ -143,8 +144,8 @@ class Graph:
             raise ValueError("Only call updateWeights if using weighted behavior.")
         for i in self.edges.keys():
             for d in (0, 1):
-                if self.edges[i]["population"][d] > self.edges[i]["capacity"]:
-                    self.edges[i]["weighted speed"][d] = self.edges[i]["speed"] - 5 * (self.edges[i]["population"][d] - self.edges[i]["capacity"])
+                if len(self.edges[i]["population"][d]) > self.edges[i]["capacity"]:
+                    self.edges[i]["weighted speed"][d] = self.edges[i]["speed"] - 5 * (len(self.edges[i]["population"][d]) - self.edges[i]["capacity"])
                     if self.edges[i]["weighted speed"][d] < 5:
                         self.edges[i]["weighted speed"][d] = 5
 

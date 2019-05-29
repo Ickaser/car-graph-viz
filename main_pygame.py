@@ -4,6 +4,10 @@ import pygame
 import pygame.freetype
 import graphGen
 import cars
+from numpy.random import randint
+
+# Currently: running with lanes, randomly generated graph with 8 nodes
+# Color of car dots is half blue and half red
 
 def main():
 
@@ -11,13 +15,15 @@ def main():
     # gets used in a number of functions, as it turns out
     size = (800, 800)
     # configurable values used when generating cars
-    carsNum = 60
+    carsNum = 10
     stepsNum = 1
     carAccel = 5
+    lanes = True
+    weights = False
 
     start_pygame()
 
-    graph = graphGen.Graph(8, weighted=True)
+    graph = graphGen.Graph(8, weighted=weights, lanes = lanes)
     graph_init(graph, size)
 
     #create cars: random style
@@ -135,8 +141,8 @@ def update_screen(screenObj, mapObj, carList, dirtyRects):
 
     # Draw cars to the screen
     # Keeps a list of areas of the screen which have been updated
-    for car in carList:
-        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255, car.velocity*8 if car.velocity*8 < 255 else 255, 0, 255), car.pos.coords, 5))
+    for i, car in enumerate(carList):
+        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if i % 2 else "blue"), car.pos.coords, 5))
 
     
     # update the parts of the screen which have changed

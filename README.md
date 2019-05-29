@@ -31,7 +31,7 @@ The structure is as follows:
         * `"speed"` for speed limit
         * `"capacity"` for capacity factor (used to model high-density traffic)
         * `"weighted speed"` for speed limit adjusted for traffic (distinct for each direction of travel)
-        * `"population"` for the number of cars currently on the edge (distinct for each direction of travel). This
+        * `"population"` is a list containing two lists (one for each direction of travel). This
         property is not accessed internally.
 * `graph.updateWeights()`: a function to call when using the weighted slowdown system. Using the `"population"` and 
 `"capacity"` values for each edge, adjusts the `"weighted speed"` value. The `Position.update(displace)` function depends on that weighted speed if the weighted functionality is set to True.
@@ -54,6 +54,7 @@ The Position class depends heavily on the Graph class, as described above. To si
     * `pos.atNode`: a Boolean indicating whether the position is equal to the position of `nodeTo`. If `nodeFrom` has a lower index than `nodeTo`, this means `pos.dist` == `pos.length`; if `nodeFrom` has the higher index, `pos.dist` == 0. In both cases, `pos.toNext` == 0.
     * `pos.eqTol`: Set at initialization of instance, defaults to 10. Sets a margin within which two positions are considered to be equal by the `==` operator
 * Functions and methods of a Position instance:
-    * `Position(graph, nodeFrom, nodeTo, dist = 0, eqTol = 10)` : takes the graph, stores it internally (by reference, of course); takes `nodeFrom` and `nodeTo`, which sets the edge on which the car begins; dist is the distance *from `nodeFrom`*, which allows a position to be initialized on the edge instead of at the node.
+    * `Position(graph, nodeFrom, nodeTo, dist = 0, eqTol = 10)` : takes the graph, stores it internally (by reference, of course); takes `nodeFrom` and `nodeTo`, which sets the edge on which the car begins; dist is the distance *from `nodeFrom`*, which allows a position to be initialized on the edge instead of at the node. If the graph has `weighted=True`, then adds the new instance to the `"population"` list attribute of the edge.
     * `pos.update(displace)`: Adds `displace` to the distance along the edge according to `pos.direction`, then recalculates `pos.coords` (and `xPos` and `yPos` as well).
+    * `pos.changeNodes(newNode)`: Used to move `pos` to a new edge. Makes a call to the `__init__` function described above, in order to recalculate all values. If the graph has `weighted=True`, removes pos from the edge's `"population"` attribute before calling the `__init__` so that the population is accurate.
     
