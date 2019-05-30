@@ -11,13 +11,13 @@ from numpy.random import randint
 
 def main():
 
-    # window size to be used by pygame
+    # window size to be used by pygame. (X, Y)
     # gets used in a number of functions, as it turns out
     size = (800, 800)
     # configurable values used when generating cars
     carsNum = 60
     stepsNum = 1
-    carAccel = 5
+    carAccel = 3
     lanes = True
     weights = False
 
@@ -144,16 +144,17 @@ def update_screen(screenObj, mapObj, carList, dirtyRects):
     for i, car in enumerate(carList):
         #keep exactly one of the following uncommented
 
-        #half red, half blue
-        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if i % 2 else "blue"), car.pos.coords, 5))
+        #various colors, each car stays the same
+        # colorOffset = int(255.0/len(carList))
+        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, 5))
         #red one way, blue the other
-        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, 5))
+        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, 5))
         #red at stopped, more green at speed
-        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255, 3*car.velocity, 0, 255)), car.pos.coords, 5))
+        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255, 3*car.velocity, 0, 255)), car.pos.coords, 5))
 
     
     # update the parts of the screen which have changed
-    dirtyRects = dirtyRects[-len(carList)*2:]
+    dirtyRects[:] = dirtyRects[-len(carList)*2:]
     pygame.display.update(dirtyRects)
 
 # -------------------------------------------------

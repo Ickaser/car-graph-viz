@@ -70,18 +70,35 @@ class Position:
         
         # calculate coordinates of position if along an edge
         if not s.atNode:
-            #interpolate between node coordinates to find position along edge
+            # get and store coordinates of nodeFrom, nodeTo
             s.fromCoords = s.graph.nodes[s.nodeFrom]["coords"]
             s.toCoords = s.graph.nodes[s.nodeTo]["coords"]
-            prog = (self.toNext if self.direction else self.dist) / float(self.length)
-            s.xPos = int(prog * s.fromCoords[0] + (1-prog) * s.toCoords[0])
-            s.yPos = int(prog * s.fromCoords[1] + (1-prog) * s.toCoords[1])
-            s.coords = (s.xPos, s.yPos)
+            s.calcCoords()
+
 
         # vars to update always: atNode, dist, xPos, yPos, coords
         # vars to update at node change: fromCoords, toCoords, length, direction
 
+    # used to interpolate between positions of the two nodes and get coordinates; useful only for visualization
+    def calcCoords(self):
+        """
+        Takes no arguments other than self, but depends internally on having coordinates
+        for nodeFrom and nodeTo
+        """
+        prog = (self.toNext if self.direction else self.dist) / float(self.length)
+        self.xPos = int(prog * self.fromCoords[0] + (1-prog) * self.toCoords[0])
+        self.yPos = int(prog * self.fromCoords[1] + (1-prog) * self.toCoords[1])
 
+        # if using lanes implemenation, adjust coords to move to side of line
+        if self.lanes:
+            xDiff = float(self.toCoords[0] - self.fromCoords[0])
+            yDiff = float(self.toCoords[1] - self.fromCoords[1])
+            # x += margin * sin(theta)
+            self.xPos += int((self.carSize + 2) * (-yDiff/self.length))
+            # y += margin * cos(theta)
+            self.yPos += int((self.carSize + 2) * (xDiff/self.length))
+
+        self.coords = (self.xPos, self.yPos)
 # equivalence operator: created a bug with the population list's remove method. Uncomment only
 # if you are ready to implement a different list removal method
     # equivalence operator (==)
@@ -120,11 +137,8 @@ class Position:
         # Recompute distance to next node, according to direction
         self.toNext = self.length - self.dist if self.direction else self.dist
 
-        # Interpolate to recalculate other coordinates
-        prog = (self.toNext if self.direction else self.dist) / float(self.length)
-        self.xPos = int(prog * self.fromCoords[0] + (1-prog) * self.toCoords[0])
-        self.yPos = int(prog * self.fromCoords[1] + (1-prog) * self.toCoords[1])
-        self.coords = (self.xPos, self.yPos)
+        # Recalculate other coordinates
+        self.calcCoords()
 
         # if the new position is at or past its destination node, then set atNode=True and location at new node
         if (self.dist <= 0 and not self.direction) or (self.dist >= self.length and self.direction):
@@ -235,23 +249,31 @@ class Car:
                 # if the car being examined is closer than the current nextCar, replace the current with the new
                 elif self.pos.toNext > car.pos.toNext and car.pos.toNext > nextCar.pos.toNext:
                     nextCar = car
+                
             
             # if a car is found ahead on the road, compute an appropriate velocity adjustment
             if carAhead:
                 veloDiff = nextCar.velocity - self.velocity
-                distDiff = self.pos.toNext - nextCar.pos.toNext - self.carSize     
+                distDiff = self.pos.toNext - nextCar.pos.toNext     
 
-                decelDist = self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel+1))) # removed +1 on second int
-                
+                decelDist = self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel))) # removed +1 on second int
+
+
+                # acceleration behavior depends on veloDiff, distDiff, and decelDist. 
                 if veloDiff > self.accel:
                     self.velocity += self.accel
                 elif veloDiff < self.accel and veloDiff > 0:
                     self.velocity += veloDiff
                 elif veloDiff < 0 and distDiff <= decelDist:
                     self.velocity -= self.accel if self.velocity >= self.accel else self.velocity
-                    
+                # if the next car is further away than the decelDist, use behavior as if no nextCar (triggers next block below)
                 elif veloDiff < 0 and distDiff > decelDist:
-                    self.velocity += self.accel
+                    self.carAhead = False
+                elif distDiff < self.carSize * 2 and distDiff > 0:
+                    self.velocity -= self.accel
+                elif distDiff == 0:
+                    self.velocity += 1
+                
 
                 
                 
@@ -279,7 +301,15 @@ class Car:
             # if car is close, but going very slow, set velocity to 5
             if self.pos.toNext <= 10 and self.velocity < 5:
                 self.velocity = 5
-    
+
+        # require self.velocity to be positive and less than speed limit
+        if self.velocity <= 0:
+            self.velocity = 1
+        elif self.velocity >self.speedLimit:
+            self.velocity = self.speedLimit
+            # for debug purposes
+            print("A car tried to go faster than the speed limit.")
+            print("Deets: veloDiff =", veloDiff, "distDiff =", distDiff, "decelDist =", decelDist)
         # travel along edge
         self.pos.update(self.velocity)
         
