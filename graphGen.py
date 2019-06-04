@@ -21,7 +21,7 @@ class Graph:
             #do something else to import information from xml
             pass
         self.size = nodes
-        self.nodes = [{"coords":(), "connect":[]} for i in range(self.size)]
+        self.nodes = [{"coords":(), "connect":[], "population":[]} for i in range(self.size)]
         # for the edges, create a dict of dicts
         self.edges = {}
         
@@ -54,11 +54,10 @@ class Graph:
             self.edges[nodeNumsUp] = {"length":0}
             self.edges[nodeNumsDown] = self.edges[nodeNumsUp]
 
-            # if using weighted behavior, set an attribute of dictionary for tracking number of cars on street
+            # Set an attribute of dictionary for tracking cars on street
             # list has two items: one for each direction on the edge
             
-            if self.weighted or self.lanes:
-                self.edges[nodeNumsUp]["population"] = [[], []]
+            self.edges[nodeNumsUp]["population"] = [[], []]
 
         
         # edge structure: dict of dicts, first is keyed by connected nodes and second is keyed by attributes of edge
@@ -129,6 +128,7 @@ class Graph:
         """
         Randomly assigns speed limits for all edges. Ints between 30 and 70.        
         If using weighted behavior, assigns street capacities as well: 3 * (1, 2, 3, 4) 
+        If using lanes behavior, assigns node capacities: (1, 2, 3, 4, 5, 6)
         Street capacities and weighting behavior should be reviewed and updated to make the model better
         """
         for i in self.edges.keys():
@@ -137,6 +137,10 @@ class Graph:
             if self.weighted:
                 self.edges[i]["weighted speed"] = [self.edges[i]["speed"], self.edges[i]["speed"] ]
                 self.edges[i]["capacity"] = np.random.randint(1, 5) * 3
+        
+        for i in range(len(self.nodes)):
+            if self.lanes:
+                self.nodes[i]["capacity"] = np.random.randint(1, 7)
 
 
     def updateWeights(self):

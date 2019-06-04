@@ -94,9 +94,9 @@ class Position:
             xDiff = float(self.toCoords[0] - self.fromCoords[0])
             yDiff = float(self.toCoords[1] - self.fromCoords[1])
             # x += margin * sin(theta)
-            self.xPos += int((self.carSize + 2) * (-yDiff/self.length))
+            self.xPos += int((self.carSize * 1.5) * (-yDiff/self.length))
             # y += margin * cos(theta)
-            self.yPos += int((self.carSize + 2) * (xDiff/self.length))
+            self.yPos += int((self.carSize * 1.5 ) * (xDiff/self.length))
 
         self.coords = (self.xPos, self.yPos)
 # equivalence operator: created a bug with the population list's remove method. Uncomment only
@@ -131,9 +131,24 @@ class Position:
         #check if car is on an edge, throw error otherwise
         if self.atNode:
             raise ValueError("A car at a node cannot move, it needs a new destination node")
+        
+        # using lanes behavior, check position before moving
+        if self.lanes:
+            # check to see if is already at node
+            if (self.dist <= 0 and not self.direction) or (self.dist >= self.length and self.direction):
+                # check if node is occupied
+                if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]):
+                    # add self to population list
+                    self.graph.nodes[self.nodeTo]["population"].append(self)
+                    self.atNode = True
+                    self.coords = self.toCoords
+                    self.xPos, self.yPos = self.coords
+                # do nothing if node is already occupied
+                else:
+                    return
 
         # Move car along edge in correct direction
-        self.dist = self.dist + displace if self.direction else self.dist - displace
+        self.dist += displace if self.direction else -displace
         # Recompute distance to next node, according to direction
         self.toNext = self.length - self.dist if self.direction else self.dist
 
@@ -141,24 +156,37 @@ class Position:
         self.calcCoords()
 
         # if the new position is at or past its destination node, then set atNode=True and location at new node
-        if (self.dist <= 0 and not self.direction) or (self.dist >= self.length and self.direction):
+        if not self.lanes and ((self.dist <= 0 and not self.direction) or (self.dist >= self.length and self.direction)):
             self.atNode = True
             self.coords = self.toCoords
-            self.xPos, yPos = self.coords
+            self.xPos, self.yPos = self.coords
     
     # generates a new Position object, using a given new node
     def changeNodes(self, newNode):
         """
         Give the car a new destination node. Fails if the car is not at its destination node.
         If the graph has weighted=True, moves weighting from old edge to new edge.
+        If the graph has lanes=True, checks that there is space to move to the new edge before doing so
         Calls the init method to recalculate all values.
         """
         if not self.atNode:
             raise ValueError("A car not at its destination node cannot change destination nodes")
+        
+        # if using lanes, check if the next position along the desired edge is true
+        if self.lanes:
+            nextCar = (self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][-1])
+            if type(nextCar) == Car:
+                if nextCar.toNext >= nextCar.length - self.carSize:
+                    # if there is a car within carSize of the node along the desired edge, do nothing
+                    return
 
         # # if using weighted graph behavior, update numbers of cars along street
         # if self.graph.weighted and self.nodeFrom != self.nodeTo:
         #     self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][self.direction].remove(self)
+
+        # if using lanes behavior, update number of cars at a given node
+        self.graph.nodes[self.nodeTo]["population"].remove(self)
+
         self.nodeFrom = self.nodeTo
         
         self.__init__(self.graph, self.nodeTo, newNode, carSize=self.eqTol)
@@ -195,10 +223,11 @@ class Car:
             pass
         else:
             startNode = np.random.randint(0, graph.size)
-            self.pos = Position(self.graph, startNode, startNode)
+            startNodes = (startNode, np.random.choice(self.graph.nodes[startNode]["connect"]))
+            startDist = np.random.randint(0, self.graph.edges[startNodes]["length"])
+            self.pos = Position(self.graph, startNodes[0], startNodes[1], startDist)
 
-            # for purposes of population, needs to already be at an edge and fully initialized at edge. Copied from below
-            self.pos.changeNodes(np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"]))
+            # for purposes of edge population tracking, needs to already be at an edge and fully initialized at edge. Copied from below
             self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
             self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
 
@@ -239,16 +268,26 @@ class Car:
 
             # Find the nearest car ahead, if there is one
             # Idea: the list implementation means that this arithemetic could be avoided (just find the index on the list, get the lower index) TODO
-            carAhead = False
-            for car in otherCars:
-                # if no cars found ahead yet, but car is ahead:
-                if carAhead == False and car.pos.toNext < self.pos.toNext:
-                    # call it the next car, and note that there is one
-                    nextCar = car
-                    carAhead = True
-                # if the car being examined is closer than the current nextCar, replace the current with the new
-                elif self.pos.toNext > car.pos.toNext and car.pos.toNext > nextCar.pos.toNext:
-                    nextCar = car
+
+            # # Arithmetic Implementation
+            # carAhead = False
+            # for car in otherCars:
+            #     # if no cars found ahead yet, but car is ahead:
+            #     if carAhead == False and car.pos.toNext <= self.pos.toNext and not car is self:
+            #         # call it the next car, and note that there is one
+            #         nextCar = car
+            #         carAhead = True
+            #     # if the car being examined is closer than the current nextCar, replace the current with the new
+            #     elif self.pos.toNext > car.pos.toNext and car.pos.toNext > nextCar.pos.toNext and not car is self:
+            #         nextCar = car
+
+            # List Implementation
+            ind = otherCars.index(self) 
+            if ind == 0:
+                carAhead = False
+            else:
+                carAhead = True
+                nextCar = otherCars[ind - 1]
                 
             
             # if a car is found ahead on the road, compute an appropriate velocity adjustment
@@ -256,23 +295,30 @@ class Car:
                 veloDiff = nextCar.velocity - self.velocity
                 distDiff = self.pos.toNext - nextCar.pos.toNext     
 
-                decelDist = self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel))) # removed +1 on second int
-
+                decelDist = 2 * self.carSize + self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel)+1)) 
 
                 # acceleration behavior depends on veloDiff, distDiff, and decelDist. 
-                if veloDiff > self.accel:
-                    self.velocity += self.accel
-                elif veloDiff < self.accel and veloDiff > 0:
-                    self.velocity += veloDiff
+
+                # car ahead is actually at same position: fudge the distance a little so they spread apart
+                if distDiff == 0:
+                    self.velocity += -1 if self.velocity > 0 else 1
+                # car ahead is going faster, is not on top: accelerate
+                elif veloDiff > 0 and distDiff > self.carSize:
+                    self.velocity += self.accel if veloDiff >= self.accel else veloDiff
+                # car ahead is slower and close: decelerate
                 elif veloDiff < 0 and distDiff <= decelDist:
                     self.velocity -= self.accel if self.velocity >= self.accel else self.velocity
-                # if the next car is further away than the decelDist, use behavior as if no nextCar (triggers next block below)
+                # car ahead is slower or same speed but far away: ignore car ahead (triggers next block below)
                 elif veloDiff < 0 and distDiff > decelDist:
-                    self.carAhead = False
-                elif distDiff < self.carSize * 2 and distDiff > 0:
-                    self.velocity -= self.accel
-                elif distDiff == 0:
-                    self.velocity += 1
+                    carAhead = False
+                # car ahead is same speed and close: maintain
+                elif veloDiff == 0 and distDiff <= decelDist:
+                    pass
+                # car ahead is same speed and far: ignore car ahead
+                elif veloDiff == 0 and distDiff > decelDist: 
+                    carAhead = False
+
+                # car ahead is going same speed: do nothing
                 
 
                 
@@ -282,7 +328,7 @@ class Car:
         if not self.lanes or not carAhead:
 
             # distance required to decelerate completely
-            decelDist = self.accel * sum(range(int(self.velocity/self.accel+1)))
+            decelDist = self.accel * sum(range(int(self.velocity/self.accel)+1))
     
             # if using weighted graph behavior, fetch weighted speed limit at each update
             if self.graph.weighted:
@@ -290,21 +336,20 @@ class Car:
     
             # if car has room to decelerate later, accelerate up to speed limit
             if self.pos.toNext > self.velocity + self.accel +  decelDist:
-                if self.velocity <= self.speedLimit - self.accel:
-                    self.velocity += self.accel
-                elif self.velocity < self.speedLimit:
-                    self.velocity = self.speedLimit
+                if self.velocity < self.speedLimit:
+                    speedUnder = self.speedLimit-self.velocity
+                    self.velocity += self.accel if speedUnder >= self.accel else speedUnder
     
             # if car is approaching node, begin decelerating
             elif self.pos.toNext <= decelDist:
                 self.velocity -= self.accel
-            # if car is close, but going very slow, set velocity to 5
-            if self.pos.toNext <= 10 and self.velocity < 5:
-                self.velocity = 5
+            # if car is close, but going very slow, set velocity to self.accel baseline
+            if self.pos.toNext <= self.carSize * 2 and self.velocity < self.accel:
+                self.velocity = self.accel
 
-        # require self.velocity to be positive and less than speed limit
-        if self.velocity <= 0:
-            self.velocity = 1
+        # require self.velocity to be nonnegative and less than speed limit
+        if self.velocity < 0:
+            self.velocity = 0
         elif self.velocity >self.speedLimit:
             self.velocity = self.speedLimit
             # for debug purposes

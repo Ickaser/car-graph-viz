@@ -15,7 +15,8 @@ def main():
     # gets used in a number of functions, as it turns out
     size = (800, 800)
     # configurable values used when generating cars
-    carsNum = 60
+    carsNum = 80
+    carSize = 20
     stepsNum = 1
     carAccel = 3
     lanes = True
@@ -28,7 +29,7 @@ def main():
 
     #create cars: random style
     # TODO: nonrandom cars & goals
-    carList = [cars.Car(graph, randomBehavior = True, accel = carAccel) for i in range(carsNum)]
+    carList = [cars.Car(graph, randomBehavior = True, accel = carAccel, carSize = carSize) for i in range(carsNum)]
 
     # draw the map  
     map = pygame.Surface(size)
@@ -145,10 +146,10 @@ def update_screen(screenObj, mapObj, carList, dirtyRects):
         #keep exactly one of the following uncommented
 
         #various colors, each car stays the same
-        # colorOffset = int(255.0/len(carList))
-        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, 5))
+        colorOffset = int(255.0/len(carList))
+        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize/2))
         #red one way, blue the other
-        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, 5))
+        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize/2))
         #red at stopped, more green at speed
         # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255, 3*car.velocity, 0, 255)), car.pos.coords, 5))
 
