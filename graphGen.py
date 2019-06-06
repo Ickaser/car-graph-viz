@@ -62,6 +62,11 @@ class Graph:
         
         # edge structure: dict of dicts, first is keyed by connected nodes and second is keyed by attributes of edge
         # ordering of node indices in outer dict keys doesn't matter
+    
+    def heuristicWeight(self, edgeNode1, edgeNode2):
+        #TODO: take traffic into account, not just speed limit
+        edge = self.edges[(edgeNode1, edgeNode2)]
+        return edge["length"] / edge["speed"]
 
     def makeCoords8nodes(self, pixels):
         """
