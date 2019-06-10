@@ -14,7 +14,7 @@ from numpy.random import randint
 size = (800, 800)
 
 # configurable values used when generating cars
-carsNum = 1
+carsNum = 80
 carSize = 20
 stepsNum = 1
 carAccel = 3
