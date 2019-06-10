@@ -37,14 +37,11 @@ class Position:
         # store nodes, check direction of travel and set appropriate booleans
         s.nodeFrom = nodeFrom
         s.nodeTo = nodeTo
-        if s.nodeTo > s.nodeFrom:
-            s.direction = True
-            s.atNode = False
-        elif s.nodeFrom > s.nodeTo:
-            s.direction = False
-            s.atNode = False
+        # set boolean direction
+        s.direction = (s.nodeTo > s.nodeFrom)
+        s.atNode = False
         # for case where is at node already, compute some coordinates and return early
-        else:
+        if s.nodeFrom == s.nodeTo:
             s.atNode = True
             s.coords = s.graph.nodes[s.nodeTo]["coords"]
             s.xPos, s.yPos = s.coords
@@ -171,8 +168,11 @@ class Position:
         """
         if not self.atNode:
             raise ValueError("A car not at its destination node cannot change destination nodes")
+
+        if not (self.nodeTo, newNode) in self.graph.edges:
+            raise ValueError("A car tried to move to a nonexistent edge.")
         
-        # if using lanes, check if the next position along the desired edge is true
+        # if using lanes, check if the next position along the desired edge is available
         if self.lanes:
             nextCar = (self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][-1])
             if type(nextCar) == Car:
@@ -184,10 +184,10 @@ class Position:
         # if self.graph.weighted and self.nodeFrom != self.nodeTo:
         #     self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][self.direction].remove(self)
 
-        # if using lanes behavior, update number of cars at a given node
-        self.graph.nodes[self.nodeTo]["population"].remove(self)
+            # if using lanes behavior, update number of cars at a given node
+            self.graph.nodes[self.nodeTo]["population"].remove(self)
 
-        self.nodeFrom = self.nodeTo
+        # self.nodeFrom = self.nodeTo
         
         self.__init__(self.graph, self.nodeTo, newNode, carSize=self.eqTol)
 
@@ -260,7 +260,7 @@ class Car:
             else:
                 if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
 # lines to execute if car has reached goal node
-                    self.graph.nodes[self.nodeTo]["population"].remove(self.pos)
+                    self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
                     del self
                     return True
                 else:
