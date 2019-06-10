@@ -82,4 +82,11 @@ The Car class depends heavily on both the Graph and Position classes above.
 
 
 
-Essential functions to call to run a simulation.
+Essential functions to call to run a simulation:  
+
+
+TODO:  
+* Improve heuristic weight function (Graph class).
+* Implement stochastic failure to follow route plan (Car class, updatePostion function)
+* Implement online search for route plan: within Car class?
+* Implement ACS (ant colony system) intelligence within route planning.
