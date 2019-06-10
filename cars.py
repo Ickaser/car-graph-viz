@@ -50,14 +50,13 @@ class Position:
         # store then check length of the edge
         # take given distance, and match it to system coordinates (from lower-index to higher-index node)
         # compute distance to destination, store it (toNext)
+        s.length = graph.edges[(s.nodeFrom, s.nodeTo)]["length"]
         if s.direction:
-            s.length = graph.edges[(s.nodeFrom, s.nodeTo)]["length"]
             s.dist = dist
             s.toNext = s.length - dist
         else:
-            s.length = graph.edges[(s.nodeTo, s.nodeFrom)]["length"]
             s.dist = s.length - dist
-            s.toNext = dist
+            s.toNext = s.dist
 
         
         
@@ -134,12 +133,14 @@ class Position:
             # check to see if is already at node
             if self.toNext <= 0:
                 # check if node is occupied
-                if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]) or self in self.graph.nodes[self.nodeTo]["population"]:
+                if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]): # or self in self.graph.nodes[self.nodeTo]["population"]:
                     # add self to population list
                     self.graph.nodes[self.nodeTo]["population"].append(self)
                     self.atNode = True
                     self.coords = self.toCoords
                     self.xPos, self.yPos = self.coords
+                    # end the method here
+                    return
                 # do nothing if node is already occupied
                 else:
                     return
@@ -155,6 +156,7 @@ class Position:
         # if the new position is at or past its destination node, then set atNode=True and location at new node
         if not self.lanes and self.toNext <= 0:
             self.atNode = True
+            self.graph.nodes[self.nodeTo]["population"].append(self)
             self.coords = self.toCoords
             self.xPos, self.yPos = self.coords
     
@@ -260,8 +262,7 @@ class Car:
             else:
                 if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
 # lines to execute if car has reached goal node
-                    if self.lanes:
-                        self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
+                    self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
                     del self
                     return True
                 else:
