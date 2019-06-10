@@ -137,7 +137,7 @@ class Position:
             # check to see if is already at node
             if self.toNext <= 0:
                 # check if node is occupied
-                if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]):
+                if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]) or self in self.graph.nodes[self.nodeTo]["population"]:
                     # add self to population list
                     self.graph.nodes[self.nodeTo]["population"].append(self)
                     self.atNode = True
@@ -260,6 +260,7 @@ class Car:
             else:
                 if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
 # lines to execute if car has reached goal node
+                    self.graph.nodes[self.nodeTo]["population"].remove(self.pos)
                     del self
                     return True
                 else:

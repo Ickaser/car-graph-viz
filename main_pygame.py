@@ -14,7 +14,7 @@ from numpy.random import randint
 size = (800, 800)
 
 # configurable values used when generating cars
-carsNum = 80
+carsNum = 1
 carSize = 20
 stepsNum = 1
 carAccel = 3
@@ -143,7 +143,7 @@ def update_system(stepsNum, carList, graph):
                 carList.remove(car)
                 del car
                 # make a new car
-                # carList.append(cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, carSize = carSize))
+                carList.append(cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, carSize = carSize))
 
 def update_screen(screenObj, mapObj, carList, dirtyRects):
 
