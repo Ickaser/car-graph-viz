@@ -9,7 +9,7 @@ import numpy as np
 class Position:
     """
     At initialization, calls first node index nodeFrom, second nodeTo: be clear about the direction. \n
-    Internally, distance is always measured from lower-index node, regardless of direction of travel; at initialization, however, pass distance from departure node.
+    Distance is always measured from lower-index node, regardless of direction of travel; at initialization, pass distance from departure node.
     Makes reference to whatever graph is passed at initialization.
     direction = True means nodeTo has higher index than nodeFrom; False means the opposite
     """
@@ -23,7 +23,7 @@ class Position:
         Takes graph, two integers indicating node indices and a distance along edge
         Graph is stored (by reference).
         If both indices are the same, places car at node and sets atNode = True.
-        If indices are different, places car along edge and sets atNode = False. The dis
+        If indices are different, places car along edge and sets atNode = False.
         Third argument is distance along the edge from the departure node. Defaults to 0 (placed at node)
         carSize: sets tolerance for equals operator and for car following
         """
@@ -135,9 +135,7 @@ class Position:
         # using lanes behavior, check position before moving
         if self.lanes:
             # check to see if is already at node
-            if self.toNext < 0:
-                self.toNext = 0
-            if self.toNext == 0:
+            if self.toNext <= 0:
                 # check if node is occupied
                 if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]):
                     # add self to population list
@@ -145,9 +143,6 @@ class Position:
                     self.atNode = True
                     self.coords = self.toCoords
                     self.xPos, self.yPos = self.coords
-                    # end the method here
-                    return
-                # if somehow car gets to node without
                 # do nothing if node is already occupied
                 else:
                     return
@@ -155,8 +150,7 @@ class Position:
         # Move car along edge in correct direction
         self.dist += displace if self.direction else -displace
         # Recompute distance to next node, according to direction
-        # self.toNext = self.length - self.dist if self.direction else self.dist
-        self.toNext -= displace
+        self.toNext = self.length - self.dist if self.direction else self.dist
 
         # Recalculate other coordinates
         self.calcCoords()
@@ -166,16 +160,6 @@ class Position:
             self.atNode = True
             self.coords = self.toCoords
             self.xPos, self.yPos = self.coords
-
-        # for debug purposes
-        if self.dist < 0:
-            print("Tried to move past node on graph.")
-            self.dist = 0
-            self.toNext = 0
-        elif self.dist > self.length:
-            print("Tried to move past node on graph.")
-            self.dist = self.length
-            self.toNext = 0
     
     # generates a new Position object, using a given new node
     def changeNodes(self, newNode):
@@ -201,41 +185,12 @@ class Position:
         #     self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][self.direction].remove(self)
 
         # if using lanes behavior, update number of cars at a given node
-            self.graph.nodes[self.nodeTo]["population"].remove(self)
+        self.graph.nodes[self.nodeTo]["population"].remove(self)
 
         self.nodeFrom = self.nodeTo
+        
+        self.__init__(self.graph, self.nodeTo, newNode, carSize=self.eqTol)
 
-        # re-initalize all the necessary values for the position
-
-        # self.__init__(self.graph, self.nodeTo, newNode, carSize=self.eqTol)
-
-        # store nodes, check direction of travel and set appropriate booleans
-        self.nodeFrom = self.nodeTo
-        self.nodeTo = newNode
-        if self.nodeTo > self.nodeFrom:
-            self.direction = True
-            self.atNode = False
-        elif self.nodeFrom > self.nodeTo:
-            self.direction = False
-            self.atNode = False
-        # for case where is at node already, compute some coordinates and return early
-        # else:
-        #     self.atNode = True
-        #     self.coords = self.graph.nodes[self.nodeTo]["coords"]
-        #     self.xPos, self.yPos = self.coords
-        #     return
-
-        # store then check length of the edge
-        # take given distance, and match it to system coordinates (from lower-index to higher-index node)
-        # compute distance to destination, store it (toNext)
-        self.length = self.graph.edges[(self.nodeFrom, self.nodeTo)]["length"]
-        self.toNext = self.length
-        self.dist = 0 if self.direction else self.length
-
-
-        self.fromCoords = self.graph.nodes[self.nodeFrom]["coords"]
-        self.toCoords = self.graph.nodes[self.nodeTo]["coords"]
-        self.calcCoords()
                 
 
         
