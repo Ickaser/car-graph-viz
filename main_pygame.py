@@ -2,8 +2,8 @@
 
 import pygame
 import pygame.freetype
-import graphGen
-import cars
+import simulator.graphGen as graphGen
+import simulator.cars as cars
 from numpy.random import randint
 
 # Currently: running with lanes, randomly generated graph with 8 nodes
@@ -85,7 +85,7 @@ def start_pygame():
     # initialize pygame
     pygame.init()
     # set up the top bar of the window
-    logo = pygame.image.load("32x32CNRIIA.jpg")
+    logo = pygame.image.load("simulator\\32x32CNRIIA.jpg")
     pygame.display.set_icon(logo)
     pygame.display.set_caption("macchine che muovono")
 
