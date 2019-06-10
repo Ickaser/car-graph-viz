@@ -260,7 +260,8 @@ class Car:
             else:
                 if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
 # lines to execute if car has reached goal node
-                    self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
+                    if self.lanes:
+                        self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
                     del self
                     return True
                 else:
