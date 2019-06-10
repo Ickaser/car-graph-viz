@@ -100,7 +100,7 @@ class Position:
 
         self.coords = (self.xPos, self.yPos)
 # equivalence operator: created a bug with the population list's remove method. Uncomment only
-# NOT CURRENTLY USED, used a different implementation in the end
+# if you are ready to implement a different list removal method
     # equivalence operator (==)
     def __eq__(self, other):
         
@@ -135,7 +135,7 @@ class Position:
         # using lanes behavior, check position before moving
         if self.lanes:
             # check to see if is already at node
-            if self.toNext <= 0:
+            if (self.dist <= 0 and not self.direction) or (self.dist >= self.length and self.direction):
                 # check if node is occupied
                 if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]):
                     # add self to population list
@@ -156,7 +156,7 @@ class Position:
         self.calcCoords()
 
         # if the new position is at or past its destination node, then set atNode=True and location at new node
-        if not self.lanes and self.toNext <= 0:
+        if not self.lanes and ((self.dist <= 0 and not self.direction) or (self.dist >= self.length and self.direction)):
             self.atNode = True
             self.coords = self.toCoords
             self.xPos, self.yPos = self.coords
@@ -206,8 +206,7 @@ class Car:
     randomBehavior: Defaults to True. If false, should have goal. Not yet implemented.
     accel: sets an overall acceleration, which serves as base for car velocity
     pos: defaults to 0, not used. If is an instance of Position class and randomBehavior is False, should be a starting position.
-    carSize: sets the size of car in pixel, used in lanes implementation and accessible for visualization
-    Gets weighted or lanes property from graph.
+    Gets lanes property from graph's lanes property.
     """
     def __init__(self, graph, randomBehavior = True, carSize = 5, accel = 5, pos = 0):
 
@@ -219,51 +218,36 @@ class Car:
         self.weighted = self.graph.weighted
         self.carSize = carSize
 
-            
-        startNode = np.random.randint(0, graph.size)
-        startNodes = (startNode, np.random.choice(self.graph.nodes[startNode]["connect"]))
-        startDist = np.random.randint(0, self.graph.edges[startNodes]["length"])
-
-        self.pos = Position(self.graph, startNodes[0], startNodes[1], startDist)
-
-        # if following a planned path, set plan
         if not randomBehavior:
-            # Still uses random goals, but follows a direct course to the goal
-            self.nodeGoal = np.random.randint(0, graph.size)
-            self.plan = self.routePlan(self.pos.nodeTo, self.nodeGoal)
-            # Plan includes current nodeTo, so remove that from list
-            self.plan.pop(0)
+            # TODO
+            pass
+        else:
+            startNode = np.random.randint(0, graph.size)
+            startNodes = (startNode, np.random.choice(self.graph.nodes[startNode]["connect"]))
+            startDist = np.random.randint(0, self.graph.edges[startNodes]["length"])
+            self.pos = Position(self.graph, startNodes[0], startNodes[1], startDist)
 
-        # for purposes of edge population tracking, needs to already be at an edge and fully initialized at edge. Copied from below
-        self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
-        self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
+            # for purposes of edge population tracking, needs to already be at an edge and fully initialized at edge. Copied from below
+            self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
+            self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
 
-        self.velocity = 0
+            self.velocity = 0
+        
+        
     
     def updatePosition(self):
-        """
-        All-inclusive method to move the car by one time step.
-        Takes no arguments; returns True if car has reached goal node, otherwise returns False.
-        """
-
-        # if at node, move to the next edge (or end movement and remove the car)
+        if not self.randomBehavior:
+            # TODO
+            pass
+        
+        # if at node, randomly select another node from the nodes connected to the current node and set as destination
         # also get speed limit info from graph, store that; end the method here
         if self.pos.atNode:
-
             # remove self from old population list, if using weights or lanes
             if self.weighted or self.lanes:
                 self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].remove(self)
 
-            # Select the next node, either randomly or from a goal list
-            if self.randomBehavior:
-                self.pos.changeNodes(np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"]))
-            else:
-                if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
-# lines to execute if car has reached goal node
-                    del self
-                    return True
-                else:
-                    self.pos.changeNodes(self.plan.pop(0))
+            self.pos.changeNodes(np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"]))
 
             # add self to new population list, if using weights or lanes
             if self.weighted or self.lanes:
@@ -277,7 +261,7 @@ class Car:
         
 
         # To update velocity, there are two methods: with and without lanes implementation
-        # Acceleration handling: lanes implementation, which avoids collision
+        # Acceleration handling: with collision avoidance
         if self.lanes:        
             # Get list of other cars on edge
             otherCars = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction]
@@ -374,68 +358,6 @@ class Car:
         # travel along edge
         self.pos.update(self.velocity)
         
-    def routePlan(self, startNode, endNode):
-        
-        """
-        A* search for best path from startNode to endNode.
-        Based on: https://github.com/laurentluce/python-algorithms/blob/master/algorithms/a_star_path_finding.py
-
-        Returns list of nodes, which form a route from startNode to endNode.
-        """
-        def h(node):
-            """Estimates with distance, minimum speed limit
-            Update this later probably?
-            """
-            # TODO make this more relevant?
-            xDiff = self.graph.nodes[endNode]["coords"][0] - self.graph.nodes[node]["coords"][0]
-            yDiff = self.graph.nodes[endNode]["coords"][1] - self.graph.nodes[node]["coords"][1]
-# Magic number warning
-            return np.sqrt(xDiff*xDiff + yDiff*yDiff) / 30
-        def update(next, current):
-            node_g[next] = node_g[current] + self.graph.heuristicWeight(current, next)
-            node_h[next] = h(next)
-            node_parent[next] = current
-            node_f[next] = node_g[next] + node_h[next]
-        if startNode == endNode:
-            return [startNode]
-        
-        size = self.graph.size
-        node_g = [0 for i in range(size)]
-        node_f = [0 for i in range(size)]
-        node_h = [0 for i in range(size)]
-        node_parent = ["" for i in range(size)]
-
-
-        closed = []
-        open = [startNode]
-
-        while len(open):
-            #pop index of next node from list
-            current = open.pop(0)
-            closed.append(current)
-            # if at goal, return final path
-            if current == endNode:
-                node = endNode
-                path = [node]
-                while node_parent[node] != startNode:
-                    node = node_parent[node]
-                    path.append(node)
-                path.append(startNode)
-                path.reverse()
-                return path
-            # iterate through connected nodes
-            adjNodes = self.graph.nodes[current]["connect"]
-            for next in adjNodes:
-                if next not in closed:
-                    if next in open:
-                        if node_g[next] > node_g[current] + self.graph.heuristicWeight(current, next):
-                            update(next, current)
-                #Probable bug right here: does it work if the node is unexplored?
-                    else:
-                        update(next, current)
-                        open.append(next)
-
-            
 
     
 

@@ -9,21 +9,18 @@ from numpy.random import randint
 # Currently: running with lanes, randomly generated graph with 8 nodes
 # Color of car dots is half blue and half red
 
-# window size to be used by pygame. (X, Y)
-# gets used in a number of functions, as it turns out
-size = (800, 800)
-
-# configurable values used when generating cars
-carsNum = 80
-carSize = 20
-stepsNum = 1
-carAccel = 3
-lanes = True
-weights = False
-randomBehavior = False
-
 def main():
 
+    # window size to be used by pygame. (X, Y)
+    # gets used in a number of functions, as it turns out
+    size = (800, 800)
+    # configurable values used when generating cars
+    carsNum = 80
+    carSize = 20
+    stepsNum = 1
+    carAccel = 3
+    lanes = True
+    weights = False
 
     start_pygame()
 
@@ -32,8 +29,7 @@ def main():
 
     #create cars: random style
     # TODO: nonrandom cars & goals
-    carList = [cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, carSize = carSize) for i in range(carsNum)]
-    oldCarsNum = carsNum
+    carList = [cars.Car(graph, randomBehavior = True, accel = carAccel, carSize = carSize) for i in range(carsNum)]
 
     # draw the map  
     map = pygame.Surface(size)
@@ -137,13 +133,7 @@ def update_system(stepsNum, carList, graph):
         if graph.weighted:
             graph.updateWeights()
         for car in carList:
-            #Update position for each car; if returns True, has reached goal
-            if car.updatePosition():
-                # remove car from list if at goal
-                carList.remove(car)
-                del car
-                # make a new car
-                # carList.append(cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, carSize = carSize))
+            car.updatePosition()
 
 def update_screen(screenObj, mapObj, carList, dirtyRects):
 
@@ -165,8 +155,7 @@ def update_screen(screenObj, mapObj, carList, dirtyRects):
 
     
     # update the parts of the screen which have changed
-    
-    dirtyRects[:] = dirtyRects[-carsNum*2:]
+    dirtyRects[:] = dirtyRects[-len(carList)*2:]
     pygame.display.update(dirtyRects)
 
 # -------------------------------------------------
