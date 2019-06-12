@@ -10,11 +10,11 @@ import simulator.cars as cars
 
 # window size to be used by pygame. (X, Y)
 # gets used in a number of functions, as it turns out
-size = (800, 800)
+size = (650, 420)
 
 # configurable values used when generating cars
 carsNum = 30
-carSize = 20
+carSize = 10
 stepsNum = 1
 carAccel = 3
 nodeWait = 3
