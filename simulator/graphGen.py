@@ -2,6 +2,7 @@
 
 
 import numpy as np
+import xmlReader.InOut as IO
 
 class Graph:
     """
@@ -9,55 +10,97 @@ class Graph:
     which allows properties of the node and edge to be saved and modified. \n
     Init arguments: \n
     nodes: number of nodes on the graph (required, as currently implemented) \n
-    xml: defaults to False. If True, imports graph structure from xml file (not yet implemented). \n
+    xml: defaults to False. If is a string, graph imports from that filename.
     weighted: defaults to False. If True, interacts with Position class in cars.py to keep track of number of cars
     lanes: defaults to False. If True, interacts with Position class to keep track of cars
     """
 
 
-    def __init__(self, nodes, xml = False, weighted = False, lanes = False):
-        # create a list, with an empty dict for each node
-        if xml:
+    def __init__(self, nodeNum = 0, xml = False, weighted = False, lanes = False):
+        
+        # if xml filename supplied, get information and set nodeNum
+        if type(xml) == str:
+            self.xmlNodeList = []
+            self.xmlEdgeList = []
+            IO.read_XML(self.xmlNodeList, self.xmlEdgeList, xml)
+
+            nodeNum = len(self.xmlNodeList)
             #do something else to import information from xml
-            pass
-        self.size = nodes
+
+        self.size = nodeNum
+        # create a list, with an empty dict for each node
         self.nodes = [{"coords":(), "connect":[], "population":[]} for i in range(self.size)]
         # for the edges, create a dict of dicts
         self.edges = {}
         
         self.weighted = weighted
         self.lanes = lanes
+        self.xml = (type(xml) == str)
+
+        # if xml filename supplied, initialize the nodes and edges
+        if type(xml) == str:
+            self.nodeIDlist = []
+            self.edgeIDlist = []
+            for i, node in enumerate(self.xmlNodeList):
+                self.nodes[i]["coords"] = (node.x, node.y)
+                self.nodes[i]["id"] = node.id
+                self.nodeIDlist.append(node.id)
+            for edge in self.xmlEdgeList:
+                self.edgeIDlist.append(edge.id)
+                node1id, node2id = [i.id for i in edge.nodes]
+                node1 = self.nodeIDlist.index(node1id)
+                node2 = self.nodeIDlist.index(node2id)
+
+                # normal streets have 0, goes both ways
+                if edge.allowed_directions == 0:
+                    self.connect(node1, node2)
+                # if direction is 1 or 2, is a one-way street; 1 or 2 indicate direction
+                elif edge.allowed_directions == 1:
+                    self.connect(node1, node2, oneWay = True)
+                elif edge.allowed_directions == 2:
+                    self.connect(node2, node1, oneWay = True)
+        
+        # make a list of nodes which have only one connection
+        self.endNodes = []
+        for i, node in enumerate(self.nodes):
+            if len(node["connect"]) == 1:
+                self.endNodes.append(i)
 
 
-    def connect(self, point1, point2):
+
+    def connect(self, point1, point2, oneWay = False):
         """
         Takes two integers, which are indexes for points on the graph
-        Creates a dict for the edge and gives it a length of 0.
+        Creates a dict for the edge and gives it a length of 0.  
+        Optional argument: oneWay, defaults to False. If true, 
+        creates dict like normal, but doesn't add point2 to point1's connection list.
         """
-        # tell each point that there is an edge
-        self.nodes[point1]["connect"].append(point2)
-        self.nodes[point2]["connect"].append(point1)
-
-        #create main edge data structure
-        #sort two point indices, check if there is already an edge between them, use tuple of indices as key for dict
-        nodeNumsUp = (point1, point2)
-        nodeNumsDown = (point2, point1)
         if point1 == point2:
             raise ValueError("Cannot connect a node to itself.")
 
+        # tuples for dictionary keys; both are used, so that index ordering doesn't matter
+        nodeNumsUp = (point1, point2)
+        nodeNumsDown = (point2, point1)
+
         if nodeNumsUp in self.edges:
-            print("Edge already exists.")
-            pass
+            print("Tried to add an already-existing edge.")
+            return
+        
+        # tell each point that there is an edge
+        self.nodes[point1]["connect"].append(point2)
+        # make second connection only if it is two-way
+        if not oneWay:
+            self.nodes[point2]["connect"].append(point1)
+
         # if input is good, this is desired result:
         # references both orderings of points to same dictionary for the edge
-        else: 
-            self.edges[nodeNumsUp] = {"length":0}
-            self.edges[nodeNumsDown] = self.edges[nodeNumsUp]
+        self.edges[nodeNumsUp] = {"length":0}
+        self.edges[nodeNumsDown] = self.edges[nodeNumsUp]
 
-            # Set an attribute of dictionary for tracking cars on street
-            # list has two items: one for each direction on the edge
-            
-            self.edges[nodeNumsUp]["population"] = [[], []]
+        # Set an attribute of dictionary for tracking cars on street
+        # list has two items: one for each direction on the edge
+        
+        self.edges[nodeNumsUp]["population"] = [[], []]
 
         
         # edge structure: dict of dicts, first is keyed by connected nodes and second is keyed by attributes of edge
@@ -67,6 +110,32 @@ class Graph:
         #TODO: take traffic into account, not just speed limit
         edge = self.edges[(edgeNode1, edgeNode2)]
         return edge["length"] / edge["speed"]
+
+
+    def xmlGetStreetProperties(self):
+        """
+        Uses the xml filename stored at initialization. 
+        Accesses that file to get edge properties.
+        Uses the format and naming created by InOut.py.
+        """
+        for edge in self.xmlEdgeList:
+            node1id, node2id = [i.id for i in edge.nodes]
+            nodeKey = (self.nodeIDlist.index(node1id), self.nodeIDlist.index(node2id))
+
+            self.edges[nodeKey]["speed"] = edge.speed_limit
+            self.edges[nodeKey]["length"] = int(edge.node_distance)
+            
+            # TODO for now, all nodes have capacity of 1
+        for i in range(len(self.nodes)):
+            if self.lanes:
+                self.nodes[i]["capacity"] = 1
+
+        #     if self.weighted:
+        #         self.edges[i]["weighted speed"] = [self.edges[i]["speed"], self.edges[i]["speed"] ]
+        #         self.edges[i]["capacity"] = np.random.randint(1, 5) * 3
+        
+
+
 
     def makeCoords8nodes(self, pixels):
         """

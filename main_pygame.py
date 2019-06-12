@@ -2,9 +2,8 @@
 
 import pygame
 import pygame.freetype
-import graphGen
-import cars
-from numpy.random import randint
+import simulator.graphGen as graphGen
+import simulator.cars as cars
 
 # Currently: running with lanes, randomly generated graph with 8 nodes
 # Color of car dots is half blue and half red
@@ -18,22 +17,21 @@ carsNum = 30
 carSize = 20
 stepsNum = 1
 carAccel = 3
+nodeWait = 3
 lanes = True
 weights = False
 randomBehavior = False
+# should be in same directory as this file
+xmlFilename = "storage.xml"
 
 def main():
 
+    global stepsNum
 
     start_pygame()
 
-    graph = graphGen.Graph(8, weighted=weights, lanes = lanes)
+    graph = graphGen.Graph(nodeNum = 8, xml = xmlFilename, weighted=weights, lanes = lanes)
     graph_init(graph, size)
-
-    #create cars: random style
-    # TODO: nonrandom cars & goals
-    carList = [cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, carSize = carSize) for i in range(carsNum)]
-    oldCarsNum = carsNum
 
     # draw the map  
     map = pygame.Surface(size)
@@ -44,8 +42,13 @@ def main():
 
     # copy the map as drawn to the window, update the display
     # Start a list called dirtyRects: used below with pygame.display.update to avoid redrawing the whole screen every time
-    dirtyRects = [screen.blit(map, (0, 0))]
+    old_dirtyRects = []
+    new_dirtyRects = []
+    new_dirtyRects.append(screen.blit(map, (0, 0)))
     pygame.display.flip()
+
+    # create the cars
+    carList = [cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, nodeWait = nodeWait, carSize = carSize) for i in range(carsNum)]
 
     # variable for controlling the main() loop
     running = True
@@ -63,18 +66,25 @@ def main():
             if event.type == pygame.QUIT:
                 # exit loop
                 running = False
+
+            # slider functionality: left slows down, right speeds up
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    stepsNum -= 1 if stepsNum > 0 else 0
+                elif event.key == pygame.K_RIGHT:
+                    stepsNum += 1
         
         # update system state
         update_system(stepsNum, carList, graph)           
 
 
         # draw system to screen
-        update_screen(screen, map, carList, dirtyRects)
+        update_screen(screen, map, carList, old_dirtyRects, new_dirtyRects)
 
         # tick the system clock
         clock.tick(20) #framerate of 20 fps
 
-# -----------------------------------------------------
+# -------------------------------------------------------------------------
 # Encapsulation functions (just to make the main more readable)
 
 def start_pygame():
@@ -85,7 +95,7 @@ def start_pygame():
     # initialize pygame
     pygame.init()
     # set up the top bar of the window
-    logo = pygame.image.load("32x32CNRIIA.jpg")
+    logo = pygame.image.load("simulator\\32x32CNRIIA.jpg")
     pygame.display.set_icon(logo)
     pygame.display.set_caption("macchine che muovono")
 
@@ -98,12 +108,16 @@ def graph_init(graph, size):
     Takes window size as an argument.
     """
 
-    # create/import the graph
-    # TODO: encapsulate this better
+    # create the graph
+    if not graph.xml:
+        graph.makeCoords8nodes(size)
+        graph.calcEdgeLengths()
+        graph.genEdgeSpeeds()
 
-    graph.makeCoords8nodes(size)
-    graph.calcEdgeLengths()
-    graph.genEdgeSpeeds()
+    # alternative: read from the xml
+    else:
+        graph.xmlGetStreetProperties()
+
     
 def draw_map(graph, map):
     """
@@ -143,9 +157,9 @@ def update_system(stepsNum, carList, graph):
                 carList.remove(car)
                 del car
                 # make a new car
-                carList.append(cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, carSize = carSize))
+                carList.append(cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, nodeWait = nodeWait, carSize = carSize))
 
-def update_screen(screenObj, mapObj, carList, dirtyRects):
+def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
 
     # draw the map again, to overwrite old car positions
     screenObj.blit(mapObj, (0, 0))
@@ -157,18 +171,18 @@ def update_screen(screenObj, mapObj, carList, dirtyRects):
 
         #various colors, each car stays the same
         colorOffset = int(255.0/len(carList))
-        dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize/2))
+        new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize/2))
         #red one way, blue the other
-        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize/2))
+        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize/2))
         #red at stopped, more green at speed
-        # dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255, 3*car.velocity, 0, 255)), car.pos.coords, 5))
+        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255, 3*car.velocity, 0, 255)), car.pos.coords, 5))
 
     
     # update the parts of the screen which have changed
-    
-    dirtyRects[:] = dirtyRects[-carsNum*2:]
-    pygame.display.update(dirtyRects)
-
+    pygame.display.update(old_dirtyRects + new_dirtyRects)
+    # reset the lists of areas which have been updated
+    old_dirtyRects[:] = new_dirtyRects
+    new_dirtyRects[:] = []
 # -------------------------------------------------
 
 if __name__=="__main__":
