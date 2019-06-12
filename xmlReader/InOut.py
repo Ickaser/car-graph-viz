@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from CreateGraph import Node, Street
 
 
-def write_XML(nodes, streets):
+def write_XML(nodes, streets, filename):
     root = ET.Element('street_and_node_data')
     #nodes
     node_list = ET.SubElement(root, 'nodes')
@@ -52,9 +52,13 @@ def write_XML(nodes, streets):
     
 
 
-def read_XML(nodes, streets):
+def read_XML(nodes, streets, filename = "storage.xml"):
+    """
+    Modified by Isaac Wheeler: added optional filename argument, which defaults to storage.xml. \n
+    Takes two list arguments, which are modified in place to add all the nodes and streets found in the XML
+    """
     #nodes
-    root = ET.parse('storage.xml').getroot()  
+    root = ET.parse(filename).getroot()  
     for node_list in root.findall('nodes/node'):
         node = Node()
         node.id = int(node_list.attrib['id'])
@@ -90,3 +94,4 @@ def read_XML(nodes, streets):
             node.y = int(node_street_list.find('y').text)
             street.nodes.append(node)
         streets.append(street)          
+

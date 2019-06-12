@@ -11,7 +11,9 @@
 import numpy as np
 import itertools
 class Node:
-    newid = next(itertools.count())
+    @staticmethod
+    def newid(c=itertools.count()):
+        return next(c)
     def __init__(self, x = 0, y = 0, node_name = ''):
         self.id = Node.newid()
         if node_name == "":
@@ -35,7 +37,7 @@ class Parking:
 
 
 class Street:
-    newid = next(itertools.count())
+    newid = itertools.count()
     def __init__(self, street_name = "No Name", nodes = None):
         if nodes != None:
             self.id = Street.newid()

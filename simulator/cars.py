@@ -45,6 +45,8 @@ class Position:
             s.atNode = True
             s.coords = s.graph.nodes[s.nodeTo]["coords"]
             s.xPos, s.yPos = s.coords
+            if self.lanes:
+                self.graph.nodes[self.nodeTo]["population"].append(self)
             return
 
         # store then check length of the edge
@@ -95,26 +97,26 @@ class Position:
             self.yPos += int((self.carSize * 1.5 ) * (xDiff/self.length))
 
         self.coords = (self.xPos, self.yPos)
-# equivalence operator: created a bug with the population list's remove method. Uncomment only
+# equivalence operator: created a bug with the population list's remove method.
 # NOT CURRENTLY USED, used a different implementation in the end
     # equivalence operator (==)
-    def __eq__(self, other):
+    # def __eq__(self, other):
         
-        # Two positions are considered equal if they have the same direction, travel nodes, and are within eqTol of each other
-        if self.direction == other.direction:
-            if self.nodeFrom == other.nodeFrom and self.nodeTo == other.nodeTo:
-                if abs(self.dist - other.dist) <= self.eqTol:
-                    return True
-        # The following block would give equality of position if traveling in opposite directions at same place
-        # else:
-        #     if self.nodeFrom == other.nodeTo and self.nodeTo == other.nodeFrom:
-        #         if abs(self.dist - other.dist) <= eqTol:
-        #             return True
-        return False
+    #     # Two positions are considered equal if they have the same direction, travel nodes, and are within eqTol of each other
+    #     if self.direction == other.direction:
+    #         if self.nodeFrom == other.nodeFrom and self.nodeTo == other.nodeTo:
+    #             if abs(self.dist - other.dist) <= self.eqTol:
+    #                 return True
+    #     # The following block would give equality of position if traveling in opposite directions at same place
+    #     # else:
+    #     #     if self.nodeFrom == other.nodeTo and self.nodeTo == other.nodeFrom:
+    #     #         if abs(self.dist - other.dist) <= eqTol:
+    #     #             return True
+    #     return False
 
-    # nonequivalence operator (!=) (required by Python 2)
-    def __ne__(self, other):
-        return not self == other
+    # # nonequivalence operator (!=) (required by Python 2)
+    # def __ne__(self, other):
+    #     return not self == other
 
     def update(self, displace):
         """
@@ -131,12 +133,14 @@ class Position:
         # using lanes behavior, check position before moving
         if self.lanes:
             # check to see if is already at node
-            if self.toNext <= 0:
-                # check if node is occupied
+            if self.toNext <= displace:
+                # check if node is not fully populated
                 if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]): # or self in self.graph.nodes[self.nodeTo]["population"]:
-                    # add self to population list
+                    
+                    # move to node: add self to population list
                     self.graph.nodes[self.nodeTo]["population"].append(self)
                     self.atNode = True
+                    #compute coords
                     self.coords = self.toCoords
                     self.xPos, self.yPos = self.coords
                     # end the method here
@@ -160,7 +164,7 @@ class Position:
             self.coords = self.toCoords
             self.xPos, self.yPos = self.coords
     
-    # generates a new Position object, using a given new node
+    # re-initalizes the Position object, using a given new node
     def changeNodes(self, newNode):
         """
         Give the car a new destination node. Fails if the car is not at its destination node.
@@ -207,31 +211,47 @@ class Car:
     graph argument: a fully built graph. Will be stored by reference in the car's data
     randomBehavior: Defaults to True. If false, should have goal. Not yet implemented.
     accel: sets an overall acceleration, which serves as base for car velocity
+    nodeWait: sets the number of time steps it takes a car to get through a node
     pos: defaults to 0, not used. If is an instance of Position class and randomBehavior is False, should be a starting position.
     carSize: sets the size of car in pixel, used in lanes implementation and accessible for visualization
     Gets weighted or lanes property from graph.
     """
-    def __init__(self, graph, randomBehavior = True, carSize = 5, accel = 5, pos = 0):
+    def __init__(self, graph, randomBehavior = True, carSize = 5, accel = 5, nodeWait = 1, pos = 0):
 
         self.graph = graph
         self.randomBehavior = randomBehavior
         self.pos = pos
         self.accel = accel
+        self.nodeWait = nodeWait
+        self.currentWait = 0
         self.lanes = self.graph.lanes
         self.weighted = self.graph.weighted
         self.carSize = carSize
 
-            
-        startNode = np.random.randint(0, graph.size)
-        startNodes = (startNode, np.random.choice(self.graph.nodes[startNode]["connect"]))
-        startDist = np.random.randint(0, self.graph.edges[startNodes]["length"])
+        # TUNING
+        # Inital car position
+
+        # Option 1: random point along a random edge
+        # startNode = np.random.randint(0, graph.size)
+        # startNodes = (startNode, np.random.choice(self.graph.nodes[startNode]["connect"]))
+        # startDist = np.random.randint(0, self.graph.edges[startNodes]["length"])
+
+        # Option 2: random dead-end node, at node
+        startNode = np.random.choice(self.graph.endNodes)
+        startNodes = (startNode, self.graph.nodes[startNode]["connect"][0])
+        startDist = 0
+
+        # /TUNING
 
         self.pos = Position(self.graph, startNodes[0], startNodes[1], startDist)
 
         # if following a planned path, set plan
         if not randomBehavior:
             # Still uses random goals, but follows a direct course to the goal
-            self.nodeGoal = np.random.randint(0, graph.size)
+            # TUNING
+            # self.nodeGoal = np.random.randint(0, graph.size)
+            self.nodeGoal = np.random.choice(graph.endNodes)
+            # /TUNING
             self.plan = self.routePlan(self.pos.nodeTo, self.nodeGoal)
             # Plan includes current nodeTo, so remove that from list
             self.plan.pop(0)
@@ -249,8 +269,11 @@ class Car:
         """
 
         # if at node, move to the next edge (or end movement and remove the car)
-        # also get speed limit info from graph, store that; end the method here
         if self.pos.atNode:
+
+            if self.currentWait < self.nodeWait:
+                self.currentWait += 1
+                return
 
             # remove self from old population list, if using weights or lanes
             if self.weighted or self.lanes:
@@ -363,7 +386,7 @@ class Car:
             elif self.pos.toNext <= decelDist:
                 self.velocity -= self.accel
             # if car is close, but going very slow, set velocity to self.accel baseline
-            if self.pos.toNext <= self.carSize * 2 and self.velocity < self.accel:
+            if self.pos.toNext <= self.carSize and self.velocity < self.accel:
                 self.velocity = self.accel
 
         # require self.velocity to be nonnegative and less than speed limit
@@ -377,6 +400,7 @@ class Car:
         # travel along edge
         self.pos.update(self.velocity)
         
+
     def routePlan(self, startNode, endNode):
         
         """
@@ -384,6 +408,7 @@ class Car:
         Based on: https://github.com/laurentluce/python-algorithms/blob/master/algorithms/a_star_path_finding.py
 
         Returns list of nodes, which form a route from startNode to endNode.
+        If there is no possible route, returns an empty list and prints a message saying so.
         """
         def h(node):
             """Estimates with distance, minimum speed limit
@@ -394,11 +419,13 @@ class Car:
             yDiff = self.graph.nodes[endNode]["coords"][1] - self.graph.nodes[node]["coords"][1]
 # Magic number warning
             return np.sqrt(xDiff*xDiff + yDiff*yDiff) / 30
+
         def update(next, current):
             node_g[next] = node_g[current] + self.graph.heuristicWeight(current, next)
             node_h[next] = h(next)
             node_parent[next] = current
             node_f[next] = node_g[next] + node_h[next]
+
         if startNode == endNode:
             return [startNode]
         
@@ -407,7 +434,6 @@ class Car:
         node_f = [0 for i in range(size)]
         node_h = [0 for i in range(size)]
         node_parent = ["" for i in range(size)]
-
 
         closed = []
         open = [startNode]
@@ -437,6 +463,12 @@ class Car:
                     else:
                         update(next, current)
                         open.append(next)
+        
+        # If the route planning fails, warn the user and return an empty list.
+        print("Route planning system found no possible route for a car.")
+        print("Attempted route from node", startNode, "to node", endNode)
+        return []
+        
 
             
 
