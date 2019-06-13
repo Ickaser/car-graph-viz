@@ -407,9 +407,6 @@ class Car:
             else:
                 newNode = self.plan[0]
 
-                #move this TODO
-                # if self.pos.changeNodes(self.plan.pop(0)):
-                #     return
         # if using lanes, check if the next position along the desired edge is available
         if self.lanes:
             pop = self.graph.edges[(self.pos.nodeTo, newNode)]["population"][0 if self.pos.nodeTo > newNode else 1]
@@ -423,24 +420,6 @@ class Car:
         if self.weighted or self.lanes:
             self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].remove(self)
 
-        # # Select the next node, either randomly or from a goal list
-        # if self.randomBehavior:
-        #     if self.pos.changeNodes(np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"])):
-        #         return
-        # else:
-        #     # Check if car has reached goal node (or if plan is finished)
-        #     if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
-        #         self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
-
-        #         # execute any other code dealing with car reaching goal
-        #         # TODO
-
-        #         # delete the car, return true
-        #         del self
-        #         return True
-        #     else:
-        #         if self.pos.changeNodes(self.plan.pop(0)):
-        #             return
 
         # move to next edge
         self.pos.changeNodes(newNode)

@@ -2,6 +2,17 @@
 
 Built by Isaac Wheeler on internship at CNR-IIA, Montelibretti campus. Begun 23/5/2019.  
 
+TODO:
+Improve readability of cars.py (car behavior functions)  
+Improve car following (cars still get too close, when moving slow at nodes)  
+Data generation
+Cars can get completely blocked: good, that is physical. What then?
+
+Document cars.py
+Example script
+Document tuning/adjustable areas
+
+
 Goal: a toy problem to which AI methods can be applied, to showcase the possibility for improvement in real-time traffic 
 flow. The program will take an XML file as input, which will allow real map data to be used as a graph structure.  
 
