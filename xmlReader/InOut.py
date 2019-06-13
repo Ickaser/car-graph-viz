@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from CreateGraph import Node, Street
 
 
-def write_XML(nodes, streets, filename):
+def write_XML(nodes, streets, filename = 'storage.xml'):
     root = ET.Element('street_and_node_data')
     #nodes
     node_list = ET.SubElement(root, 'nodes')
@@ -48,7 +48,7 @@ def write_XML(nodes, streets, filename):
             ET.SubElement(n_, 'y').text = str(street_node.y)
 
     data = ET.ElementTree(root)
-    data.write('storage.xml')  
+    data.write(filename)  
     
 
 

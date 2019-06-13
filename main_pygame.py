@@ -14,7 +14,7 @@ size = (650, 420)
 
 # configurable values used when generating cars
 carsNum = 30
-carSize = 10
+carSize = 13
 stepsNum = 1
 carAccel = 3
 nodeWait = 3
@@ -22,7 +22,7 @@ lanes = True
 weights = False
 randomBehavior = False
 # should be in same directory as this file
-xmlFilename = "storage.xml"
+xmlFilename = "storage_b.xml"
 
 def main():
 
@@ -169,13 +169,16 @@ def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
     for i, car in enumerate(carList):
         #keep exactly one of the following uncommented
 
-        #various colors, each car stays the same
-        colorOffset = int(255.0/len(carList))
-        new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize/2))
+        #various colors, oldest cars are red and newest are green
+        # colorOffset = int(255.0/len(carList))
+        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize / 2))
+        #various colors, random based on car id
+        new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color((int(id(car))/100 +128) % 255, int(id(car))/100 % 255, 0, 255), car.pos.coords, car.carSize / 2))
+
         #red one way, blue the other
-        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize/2))
+        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize / 2))
         #red at stopped, more green at speed
-        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255, 3*car.velocity, 0, 255)), car.pos.coords, 5))
+        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255 - 5*car.velocity, 5*car.velocity, 0, 255)), car.pos.coords, car.carSize / 2))
 
     
     # update the parts of the screen which have changed

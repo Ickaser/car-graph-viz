@@ -132,7 +132,7 @@ class Position:
         
         # using lanes behavior, check position before moving
         if self.lanes:
-            # check to see if is already at node
+            # check to see if is already within reach of node
             if self.toNext <= displace:
                 # check if node is not fully populated
                 if self.graph.nodes[self.nodeTo]["capacity"] > len(self.graph.nodes[self.nodeTo]["population"]): # or self in self.graph.nodes[self.nodeTo]["population"]:
@@ -175,23 +175,18 @@ class Position:
         if not self.atNode:
             raise ValueError("A car not at its destination node cannot change destination nodes")
 
+        if self.toNext > self.carSize:
+            print("A car skipped an edge, somehow.")
         if not (self.nodeTo, newNode) in self.graph.edges:
             raise ValueError("A car tried to move to a nonexistent edge.")
         
-        # if using lanes, check if the next position along the desired edge is available
-        if self.lanes:
-            nextCar = (self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][-1])
-            if type(nextCar) == Car:
-                if nextCar.toNext >= nextCar.length - self.carSize:
-                    # if there is a car within carSize of the node along the desired edge, do nothing
-                    return
 
         # # if using weighted graph behavior, update numbers of cars along street
         # if self.graph.weighted and self.nodeFrom != self.nodeTo:
         #     self.graph.edges[(self.nodeFrom, self.nodeTo)]["population"][self.direction].remove(self)
 
-            # if using lanes behavior, update number of cars at a given node
-            self.graph.nodes[self.nodeTo]["population"].remove(self)
+            # if successfully moves away, remove self from population of node
+        self.graph.nodes[self.nodeTo]["population"].remove(self)
 
         # self.nodeFrom = self.nodeTo
         
@@ -271,66 +266,19 @@ class Car:
         # if at node, move to the next edge (or end movement and remove the car)
         if self.pos.atNode:
 
-            if self.currentWait < self.nodeWait:
-                self.currentWait += 1
-                return
+            return self.nodeBehavior()
 
-            # remove self from old population list, if using weights or lanes
-            if self.weighted or self.lanes:
-                self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].remove(self)
-
-            # Select the next node, either randomly or from a goal list
-            if self.randomBehavior:
-                self.pos.changeNodes(np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"]))
-            else:
-                if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
-# lines to execute if car has reached goal node
-                    self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
-                    del self
-                    return True
-                else:
-                    self.pos.changeNodes(self.plan.pop(0))
-
-            # add self to new population list, if using weights or lanes
-            if self.weighted or self.lanes:
-                self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
-
-            self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
-            return
-        
         # along edge: update velocity, then move that far along edge
-        # TODO: checking cars' positions amongst themselves
-        
 
         # To update velocity, there are two methods: with and without lanes implementation
         # Acceleration handling: lanes implementation, which avoids collision
         if self.lanes:        
-            # Get list of other cars on edge
-            otherCars = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction]
 
-            # Find the nearest car ahead, if there is one
-            # Idea: the list implementation means that this arithemetic could be avoided (just find the index on the list, get the lower index) TODO
-
-            # # Arithmetic Implementation
-            # carAhead = False
-            # for car in otherCars:
-            #     # if no cars found ahead yet, but car is ahead:
-            #     if carAhead == False and car.pos.toNext <= self.pos.toNext and not car is self:
-            #         # call it the next car, and note that there is one
-            #         nextCar = car
-            #         carAhead = True
-            #     # if the car being examined is closer than the current nextCar, replace the current with the new
-            #     elif self.pos.toNext > car.pos.toNext and car.pos.toNext > nextCar.pos.toNext and not car is self:
-            #         nextCar = car
-
-            # List Implementation
-            ind = otherCars.index(self) 
-            if ind == 0:
-                carAhead = False
-            else:
+            nextCar = self.getNextCarEdge()
+            if nextCar:
                 carAhead = True
-                nextCar = otherCars[ind - 1]
-                
+            else:
+                carAhead = False
             
             # if a car is found ahead on the road, compute an appropriate velocity adjustment
             if carAhead:
@@ -399,26 +347,135 @@ class Car:
             print("Deets: veloDiff =", veloDiff, "distDiff =", distDiff, "decelDist =", decelDist)
         # travel along edge
         self.pos.update(self.velocity)
-        
+
+
+    def getNextCarEdge(self):
+        """
+        Takes no arguments. If finds a car ahead of self on the same edge, returns that car; otherwise, returns False.
+        """
+        # Get list of all cars on same edge
+        edgeCars = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction]
+
+        # Find the nearest car ahead, if there is one
+
+        # # Arithmetic implementation: seems to work worse than the list implementation below
+        # carAhead = False
+        # for car in edgeCars:
+        #     # if no cars found ahead yet, but car is ahead:
+        #     if carAhead == False and car.pos.toNext <= self.pos.toNext and not car is self:
+        #         # call it the next car, and note that there is one
+        #         nextCar = car
+        #         carAhead = True
+        #     # if the car being examined is closer than the current nextCar, replace the current with the new
+        #     elif self.pos.toNext > car.pos.toNext and car.pos.toNext > nextCar.pos.toNext and not car is self:
+        #         nextCar = car
+
+        # List Implementation
+        ind = edgeCars.index(self) 
+        if ind == 0:
+            return False
+        else:
+            nextCar = edgeCars[ind - 1]
+            return nextCar
+
+
+    def nodeBehavior(self):
+        """
+        Takes no arguments. Implements car behavior when it has reached a node. \n
+        Returns True if the car has reached its goal node.
+        """
+
+        # check if car has already waited long enough at node; if not, increment wait time
+        if self.currentWait < self.nodeWait:
+            self.currentWait += 1
+            return
+
+        # decide what the next node should be
+        if self.randomBehavior:
+            newNode = np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"])
+        else:
+            if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
+                self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
+                self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].remove(self)
+
+                # execute any other code dealing with car reaching goal
+                # TODO
+
+                # delete the car, return true
+                del self
+                return True
+            else:
+                newNode = self.plan[0]
+
+                #move this TODO
+                # if self.pos.changeNodes(self.plan.pop(0)):
+                #     return
+        # if using lanes, check if the next position along the desired edge is available
+        if self.lanes:
+            pop = self.graph.edges[(self.pos.nodeTo, newNode)]["population"][0 if self.pos.nodeTo > newNode else 1]
+            if len(pop) > 0:
+                nextCar = pop[-1]
+                if nextCar.pos.toNext >= nextCar.pos.length - self.carSize:
+                    # if there is a car within carSize of the node along the desired edge, do nothing and end function
+                    return 
+
+        # remove self from old population list, if using weights or lanes
+        if self.weighted or self.lanes:
+            self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].remove(self)
+
+        # # Select the next node, either randomly or from a goal list
+        # if self.randomBehavior:
+        #     if self.pos.changeNodes(np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"])):
+        #         return
+        # else:
+        #     # Check if car has reached goal node (or if plan is finished)
+        #     if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
+        #         self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
+
+        #         # execute any other code dealing with car reaching goal
+        #         # TODO
+
+        #         # delete the car, return true
+        #         del self
+        #         return True
+        #     else:
+        #         if self.pos.changeNodes(self.plan.pop(0)):
+        #             return
+
+        # move to next edge
+        self.pos.changeNodes(newNode)
+                    
+        # If successfully moves, execute the rest of this function
+
+        # remove newNode from plan
+        if not self.randomBehavior:
+            self.plan.pop(0)
+
+        # add self to new population list, if using weights or lanes
+        if self.weighted or self.lanes:
+            self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
+
+        self.currentWait = 0
+        self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
+        return
+
 
     def routePlan(self, startNode, endNode):
-        
+        # Based on: https://github.com/laurentluce/python-algorithms/blob/master/algorithms/a_star_path_finding.py
         """
         A* search for best path from startNode to endNode.
-        Based on: https://github.com/laurentluce/python-algorithms/blob/master/algorithms/a_star_path_finding.py
-
         Returns list of nodes, which form a route from startNode to endNode.
         If there is no possible route, returns an empty list and prints a message saying so.
         """
         def h(node):
-            """Estimates with distance, minimum speed limit
+            """
+            Estimates with distance, minimum speed limit
             Update this later probably?
             """
             # TODO make this more relevant?
             xDiff = self.graph.nodes[endNode]["coords"][0] - self.graph.nodes[node]["coords"][0]
             yDiff = self.graph.nodes[endNode]["coords"][1] - self.graph.nodes[node]["coords"][1]
-# Magic number warning
-            return np.sqrt(xDiff*xDiff + yDiff*yDiff) / 30
+            return np.sqrt(xDiff*xDiff + yDiff*yDiff)
 
         def update(next, current):
             node_g[next] = node_g[current] + self.graph.heuristicWeight(current, next)
