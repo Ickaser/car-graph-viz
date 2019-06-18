@@ -4,9 +4,7 @@ import pygame
 import pygame.freetype
 import simulator.graphGen as graphGen
 import simulator.cars as cars
-
-# Currently: running with lanes, randomly generated graph with 8 nodes
-# Color of car dots is half blue and half red
+import numpy as np
 
 # window size to be used by pygame. (X, Y)
 # gets used in a number of functions, as it turns out
@@ -17,20 +15,24 @@ size = (650, 420)
 carSettings = dict(
     carSize = 13,
     carAccel = 3,
-    nodeWait = 3,
+    nodeWait = 1,
     randomBehavior = False,
 )
 lanes = True
 weights = False
-carsNum = 30
+carsNum = 50
 stepsNum = 1
 
 # should be in same directory as this file
-xmlFilename = "storage_b.xml"
+xmlFilename = "storage_a.xml"
+
+#pseudorandom: set a constant seed so that it runs the same each time
+np.random.seed(1234)
 
 def main():
 
     global stepsNum
+    global carsNum
 
     start_pygame()
 
@@ -71,12 +73,18 @@ def main():
                 # exit loop
                 running = False
 
-            # slider functionality: left slows down, right speeds up
             elif event.type == pygame.KEYDOWN:
+                # slider functionality: left slows down, right speeds up
                 if event.key == pygame.K_LEFT:
                     stepsNum -= 1 if stepsNum > 0 else 0
                 elif event.key == pygame.K_RIGHT:
                     stepsNum += 1
+
+                # slider functionality: up adds cars, down subtracts (once cars reach their goal)
+                elif event.key == pygame.K_UP:
+                    carsNum += 1
+                elif event.key == pygame.K_DOWN:
+                    carsNum -= 1 if carsNum > 0 else 0
         
         # update system state
         update_system(stepsNum, carList, graph)           
@@ -161,7 +169,8 @@ def update_system(stepsNum, carList, graph):
                 carList.remove(car)
                 del car
                 # make a new car
-                carList.append(cars.Car(graph, carSettings))
+        while len(carList) < carsNum:
+            carList.append(cars.Car(graph, carSettings))
 
 def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
 

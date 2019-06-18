@@ -141,6 +141,8 @@ class Position:
                     self.graph.nodes[self.nodeTo]["population"].append(self)
                     self.atNode = True
                     #compute coords
+                    self.toNext = 0
+                    self.dist += displace if self.direction else -displace
                     self.coords = self.toCoords
                     self.xPos, self.yPos = self.coords
                     # end the method here
@@ -251,6 +253,9 @@ class Car:
             self.plan = self.routePlan(self.pos.nodeTo, self.nodeGoal)
             # Plan includes current nodeTo, so remove that from list
             self.plan.pop(0)
+            
+        self.history = []
+        self.history += startNodes
 
         # for purposes of edge population tracking, needs to already be at an edge and fully initialized at edge. Copied from below
         self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
@@ -333,7 +338,7 @@ class Car:
         """
 
         # distance required to decelerate completely
-        decelDist = self.accel * sum(range(int(self.velocity/self.accel)+1))
+        decelDist = self.accel * sum(range(int(self.velocity/self.accel)+1)) 
 
         # if using weighted graph behavior, fetch weighted speed limit at each update
         if self.graph.weighted:
@@ -347,7 +352,7 @@ class Car:
 
         # if car is close to node, but going very slow, increase velocity slightly to ensure the car arrives
         if self.pos.toNext <= self.carSize and self.velocity < self.accel:
-            return 1
+            return self.accel - self.velocity
 
         # if car is approaching node, begin decelerating
         elif self.pos.toNext <= decelDist:
@@ -416,9 +421,9 @@ class Car:
 
         # if using lanes, check if the next position along the desired edge is available
         if self.lanes:
-            pop = self.graph.edges[(self.pos.nodeTo, newNode)]["population"][0 if self.pos.nodeTo > newNode else 1]
-            if len(pop) > 0:
-                nextCar = pop[-1]
+            population = self.graph.edges[(self.pos.nodeTo, newNode)]["population"][0 if self.pos.nodeTo > newNode else 1]
+            if len(population) > 0:
+                nextCar = population[-1]
                 if nextCar.pos.toNext >= nextCar.pos.length - self.carSize:
                     # if there is a car within carSize of the node along the desired edge, do nothing and end function
                     return 
@@ -432,6 +437,9 @@ class Car:
         self.pos.changeNodes(newNode)
                     
         # If successfully moves, execute the rest of this function
+
+        # add newNode to car's route history
+        self.history.append(newNode)
 
         # remove newNode from plan
         if not self.randomBehavior:
