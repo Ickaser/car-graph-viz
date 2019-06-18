@@ -4,9 +4,11 @@ Built by Isaac Wheeler on internship at CNR-IIA, Montelibretti campus. Begun 23/
 
 TODO:
 Improve readability of cars.py (car behavior functions)  
+Use **kwargs to declare car attributes (cars.py, main_pygame.py)
 Improve car following (cars still get too close, when moving slow at nodes)  
 Data generation
 Cars can get completely blocked: good, that is physical. What then?
+Stop cars from overlapping at busy nodes (fudge coordinates? collision detection?)
 
 Document cars.py
 Example script

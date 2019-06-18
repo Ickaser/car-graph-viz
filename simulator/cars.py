@@ -202,27 +202,28 @@ class Position:
 # Depends on the above Position class
 class Car:
     """
-    Simulates a car moving along the graph.
-    graph argument: a fully built graph. Will be stored by reference in the car's data
-    randomBehavior: Defaults to True. If false, should have goal. Not yet implemented.
-    accel: sets an overall acceleration, which serves as base for car velocity
-    nodeWait: sets the number of time steps it takes a car to get through a node
-    pos: defaults to 0, not used. If is an instance of Position class and randomBehavior is False, should be a starting position.
-    carSize: sets the size of car in pixel, used in lanes implementation and accessible for visualization
-    Gets weighted or lanes property from graph.
+    Simulates a car moving along the graph.  
+    graph argument: a fully built graph. Will be stored by reference in the car's data. Car gets weighted/lanes properties from graph.
+    carBehavior argument: a dict containing the following variables.  \n\n
+    randomBehavior: Defaults to True. If false, gets a random goal and creates a plan at init.  
+    accel: sets an overall acceleration, which serves as base for car velocity.  
+    nodeWait: sets the number of time steps it takes a car to get through a node  
+    pos: defaults to 0, not used. If is an instance of Position class and randomBehavior is False, should be a starting position.  
+    carSize: sets the size of car in pixel, used in lanes implementation and accessible for visualization  
     """
-    def __init__(self, graph, randomBehavior = True, carSize = 5, accel = 5, nodeWait = 1, pos = 0):
+    def __init__(self, graph, carBehavior = {}): # randomBehavior = True, carSize = 5, accel = 5, nodeWait = 1, pos = 0):
 
         self.graph = graph
-        self.randomBehavior = randomBehavior
-        self.pos = pos
-        self.accel = accel
-        self.nodeWait = nodeWait
-        self.currentWait = 0
         self.lanes = self.graph.lanes
         self.weighted = self.graph.weighted
-        self.carSize = carSize
 
+        self.randomBehavior = carBehavior.get("randomBehavior", True)
+        self.pos = carBehavior.get("pos", 0)
+        self.accel = carBehavior.get("accel", 5)
+        self.nodeWait = carBehavior.get("nodeWait", 1)
+        self.carSize = carBehavior.get("carSize", 5) 
+
+        self.currentWait = 0
         # TUNING
         # Inital car position
 
@@ -241,7 +242,7 @@ class Car:
         self.pos = Position(self.graph, startNodes[0], startNodes[1], startDist)
 
         # if following a planned path, set plan
-        if not randomBehavior:
+        if not self.randomBehavior:
             # Still uses random goals, but follows a direct course to the goal
             # TUNING
             # self.nodeGoal = np.random.randint(0, graph.size)
@@ -259,95 +260,101 @@ class Car:
     
     def updatePosition(self):
         """
-        All-inclusive method to move the car by one time step.
-        Takes no arguments; returns True if car has reached goal node, otherwise returns False.
+        All-inclusive method to move the car by one time step. \n
+        Takes no arguments; returns True if car has reached goal node, otherwise returns False. \n
+        If the car is at a node, calls self.nodeBehavior; if the car is at node, accelerates and moves
         """
 
         # if at node, move to the next edge (or end movement and remove the car)
         if self.pos.atNode:
-
             return self.nodeBehavior()
 
-        # along edge: update velocity, then move that far along edge
-
-        # To update velocity, there are two methods: with and without lanes implementation
         # Acceleration handling: lanes implementation, which avoids collision
         if self.lanes:        
-
             nextCar = self.getNextCarEdge()
             if nextCar:
                 carAhead = True
             else:
                 carAhead = False
-            
             # if a car is found ahead on the road, compute an appropriate velocity adjustment
             if carAhead:
-                veloDiff = nextCar.velocity - self.velocity
-                distDiff = self.pos.toNext - nextCar.pos.toNext     
+                self.velocity += self.accelWithFollowing(nextCar)
 
-                decelDist = 2 * self.carSize + self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel)+1)) 
-
-                # acceleration behavior depends on veloDiff, distDiff, and decelDist. 
-
-                # car ahead is actually at same position: fudge the distance a little so they spread apart
-                if distDiff == 0:
-                    self.velocity += -1 if self.velocity > 0 else 1
-                # car ahead is going faster, is not on top: accelerate
-                elif veloDiff > 0 and distDiff > self.carSize:
-                    self.velocity += self.accel if veloDiff >= self.accel else veloDiff
-                # car ahead is slower and close: decelerate
-                elif veloDiff < 0 and distDiff <= decelDist:
-                    self.velocity -= self.accel if self.velocity >= self.accel else self.velocity
-                # car ahead is slower or same speed but far away: ignore car ahead (triggers next block below)
-                elif veloDiff < 0 and distDiff > decelDist:
-                    carAhead = False
-                # car ahead is same speed and close: maintain
-                elif veloDiff == 0 and distDiff <= decelDist:
-                    pass
-                # car ahead is same speed and far: ignore car ahead
-                elif veloDiff == 0 and distDiff > decelDist: 
-                    carAhead = False
-
-                # car ahead is going same speed: do nothing
-                
-
-                
-                
-
-        # Acceleration handling: calculate to next node (either no lanes, or no cars ahead)
+        # Acceleration handling: calculate to next node (either without lanes, or no cars ahead)
         if not self.lanes or not carAhead:
-
-            # distance required to decelerate completely
-            decelDist = self.accel * sum(range(int(self.velocity/self.accel)+1))
-    
-            # if using weighted graph behavior, fetch weighted speed limit at each update
-            if self.graph.weighted:
-                self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["weighted speed"][self.pos.direction]
-    
-            # if car has room to decelerate later, accelerate up to speed limit
-            if self.pos.toNext > self.velocity + self.accel +  decelDist:
-                if self.velocity < self.speedLimit:
-                    speedUnder = self.speedLimit-self.velocity
-                    self.velocity += self.accel if speedUnder >= self.accel else speedUnder
-    
-            # if car is approaching node, begin decelerating
-            elif self.pos.toNext <= decelDist:
-                self.velocity -= self.accel
-            # if car is close, but going very slow, set velocity to self.accel baseline
-            if self.pos.toNext <= self.carSize and self.velocity < self.accel:
-                self.velocity = self.accel
+            self.velocity += self.accelWithoutFollowing()
 
         # require self.velocity to be nonnegative and less than speed limit
         if self.velocity < 0:
             self.velocity = 0
-        elif self.velocity >self.speedLimit:
+        elif self.velocity > self.speedLimit:
             self.velocity = self.speedLimit
             # for debug purposes
             print("A car tried to go faster than the speed limit.")
-            print("Deets: veloDiff =", veloDiff, "distDiff =", distDiff, "decelDist =", decelDist)
         # travel along edge
         self.pos.update(self.velocity)
 
+    def accelWithFollowing(self, nextCar):
+        """
+        Takes self and a Car object as argument; the Car object should be on the same edge and ahead of self.
+        Returns the appropriate acceleration (change in velocity, either + or -).
+        """
+        # Compute the values on which the behavior is based
+        veloDiff = nextCar.velocity - self.velocity
+        distDiff = self.pos.toNext - nextCar.pos.toNext     
+        decelDist = 2 * self.carSize + self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel)+1)) 
+
+        # car ahead is actually at same position: fudge the distance a little so they spread apart
+        if distDiff == 0:
+            return -1 if self.velocity > 0 else 1
+        # car ahead is going faster, is not overlapping: accelerate
+        elif veloDiff > 0 and distDiff > self.carSize:
+            return self.accel if veloDiff >= self.accel else veloDiff
+        # car ahead is slower and close: decelerate
+        elif veloDiff < 0 and distDiff <= decelDist:
+            return -self.accel if self.velocity >= self.accel else -self.velocity
+        # car ahead is slower or same speed but far away: ignore car ahead (call other function)
+        elif veloDiff < 0 and distDiff > decelDist:
+            return self.accelWithoutFollowing()
+        # car ahead is same speed and close: maintain speed
+        elif veloDiff == 0 and distDiff <= decelDist:
+            return 0
+        # car ahead is same speed and far: ignore car ahead (call other function)
+        elif veloDiff == 0 and distDiff > decelDist: 
+            return self.accelWithoutFollowing()
+
+        # if none of the above cases are true, maintain speed
+        return 0
+                
+    def accelWithoutFollowing(self):
+        """
+        Takes only self as argument.
+        Returns the acceleration, such that the car slows down before it reaches the next destination.
+        """
+
+        # distance required to decelerate completely
+        decelDist = self.accel * sum(range(int(self.velocity/self.accel)+1))
+
+        # if using weighted graph behavior, fetch weighted speed limit at each update
+        if self.graph.weighted:
+            self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["weighted speed"][self.pos.direction]
+
+        # if car has room to decelerate later before reaching node, accelerate up to speed limit
+        if self.pos.toNext > self.velocity + self.accel +  decelDist:
+            if self.velocity < self.speedLimit:
+                speedUnder = self.speedLimit-self.velocity
+                return self.accel if speedUnder >= self.accel else speedUnder
+
+        # if car is close to node, but going very slow, increase velocity slightly to ensure the car arrives
+        if self.pos.toNext <= self.carSize and self.velocity < self.accel:
+            return 1
+
+        # if car is approaching node, begin decelerating
+        elif self.pos.toNext <= decelDist:
+            return -self.accel
+
+        # if none of the other cases are true, maintain velocity
+        return 0
 
     def getNextCarEdge(self):
         """

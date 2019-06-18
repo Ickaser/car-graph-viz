@@ -12,15 +12,19 @@ import simulator.cars as cars
 # gets used in a number of functions, as it turns out
 size = (650, 420)
 
+
 # configurable values used when generating cars
-carsNum = 30
-carSize = 13
-stepsNum = 1
-carAccel = 3
-nodeWait = 3
+carSettings = dict(
+    carSize = 13,
+    carAccel = 3,
+    nodeWait = 3,
+    randomBehavior = False,
+)
 lanes = True
 weights = False
-randomBehavior = False
+carsNum = 30
+stepsNum = 1
+
 # should be in same directory as this file
 xmlFilename = "storage_b.xml"
 
@@ -48,7 +52,7 @@ def main():
     pygame.display.flip()
 
     # create the cars
-    carList = [cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, nodeWait = nodeWait, carSize = carSize) for i in range(carsNum)]
+    carList = [cars.Car(graph, carSettings) for i in range(carsNum)]
 
     # variable for controlling the main() loop
     running = True
@@ -95,9 +99,9 @@ def start_pygame():
     # initialize pygame
     pygame.init()
     # set up the top bar of the window
-    logo = pygame.image.load("simulator\\32x32CNRIIA.jpg")
+    logo = pygame.image.load("32x32CNRIIA.jpg")
     pygame.display.set_icon(logo)
-    pygame.display.set_caption("macchine che muovono")
+    pygame.display.set_caption("Traffic Simulation")
 
     # stat pygame's typesetting system
     pygame.freetype.init()
@@ -157,7 +161,7 @@ def update_system(stepsNum, carList, graph):
                 carList.remove(car)
                 del car
                 # make a new car
-                carList.append(cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, nodeWait = nodeWait, carSize = carSize))
+                carList.append(cars.Car(graph, carSettings))
 
 def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
 
@@ -172,11 +176,13 @@ def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
         #various colors, oldest cars are red and newest are green
         # colorOffset = int(255.0/len(carList))
         # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize / 2))
+
         #various colors, random based on car id
         new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color((int(id(car))/100 +128) % 255, int(id(car))/100 % 255, 0, 255), car.pos.coords, car.carSize / 2))
 
         #red one way, blue the other
         # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize / 2))
+
         #red at stopped, more green at speed
         # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255 - 5*car.velocity, 5*car.velocity, 0, 255)), car.pos.coords, car.carSize / 2))
 
