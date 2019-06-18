@@ -4,31 +4,40 @@ import pygame
 import pygame.freetype
 import simulator.graphGen as graphGen
 import simulator.cars as cars
-
-# Currently: running with lanes, randomly generated graph with 8 nodes
-# Color of car dots is half blue and half red
+import numpy as np
 
 # window size to be used by pygame. (X, Y)
 # gets used in a number of functions, as it turns out
-size = (650, 420)
+size = (650, 455)
+
 
 # configurable values used when generating cars
-carsNum = 30
-carSize = 10
-stepsNum = 1
-carAccel = 3
-nodeWait = 3
+carSettings = dict(
+    carSize = 13,
+    carAccel = 3,
+    nodeWait = 5,
+    randomBehavior = False,
+)
 lanes = True
 weights = False
-randomBehavior = False
+carsNum = 40
+stepsNum = 1
+fps = 20
+
 # should be in same directory as this file
-xmlFilename = "storage.xml"
+xmlFilename = "storage_a.xml"
+
+#pseudorandom: set a constant seed so that it runs the same each time
+np.random.seed(1234)
 
 def main():
 
     global stepsNum
+    global carsNum
+    global size
 
     start_pygame()
+    font = pygame.freetype.SysFont("Times New Roman", 14)
 
     graph = graphGen.Graph(nodeNum = 8, xml = xmlFilename, weighted=weights, lanes = lanes)
     graph_init(graph, size)
@@ -48,7 +57,7 @@ def main():
     pygame.display.flip()
 
     # create the cars
-    carList = [cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, nodeWait = nodeWait, carSize = carSize) for i in range(carsNum)]
+    carList = [cars.Car(graph, carSettings) for i in range(carsNum)]
 
     # variable for controlling the main() loop
     running = True
@@ -67,12 +76,8 @@ def main():
                 # exit loop
                 running = False
 
-            # slider functionality: left slows down, right speeds up
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    stepsNum -= 1 if stepsNum > 0 else 0
-                elif event.key == pygame.K_RIGHT:
-                    stepsNum += 1
+                sliders(event, new_dirtyRects)
         
         # update system state
         update_system(stepsNum, carList, graph)           
@@ -82,7 +87,7 @@ def main():
         update_screen(screen, map, carList, old_dirtyRects, new_dirtyRects)
 
         # tick the system clock
-        clock.tick(20) #framerate of 20 fps
+        clock.tick(fps) #framerate of 20 fps
 
 # -------------------------------------------------------------------------
 # Encapsulation functions (just to make the main more readable)
@@ -95,9 +100,9 @@ def start_pygame():
     # initialize pygame
     pygame.init()
     # set up the top bar of the window
-    logo = pygame.image.load("simulator\\32x32CNRIIA.jpg")
+    logo = pygame.image.load("32x32CNRIIA.jpg")
     pygame.display.set_icon(logo)
-    pygame.display.set_caption("macchine che muovono")
+    pygame.display.set_caption("Traffic Simulation")
 
     # stat pygame's typesetting system
     pygame.freetype.init()
@@ -157,7 +162,8 @@ def update_system(stepsNum, carList, graph):
                 carList.remove(car)
                 del car
                 # make a new car
-                carList.append(cars.Car(graph, randomBehavior = randomBehavior, accel = carAccel, nodeWait = nodeWait, carSize = carSize))
+        while len(carList) < carsNum:
+            carList.append(cars.Car(graph, carSettings))
 
 def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
 
@@ -169,13 +175,18 @@ def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
     for i, car in enumerate(carList):
         #keep exactly one of the following uncommented
 
-        #various colors, each car stays the same
-        colorOffset = int(255.0/len(carList))
-        new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize/2))
+        #various colors, oldest cars are red and newest are green
+        # colorOffset = int(255.0/len(carList))
+        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize / 2))
+
+        #various colors, random based on car id
+        new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color((int(id(car))/100 +128) % 255, int(id(car))/100 % 255, 0, 255), car.pos.coords, car.carSize / 2))
+
         #red one way, blue the other
-        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize/2))
+        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize / 2))
+
         #red at stopped, more green at speed
-        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255, 3*car.velocity, 0, 255)), car.pos.coords, 5))
+        # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255 - 5*car.velocity, 5*car.velocity, 0, 255)), car.pos.coords, car.carSize / 2))
 
     
     # update the parts of the screen which have changed
@@ -183,6 +194,26 @@ def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
     # reset the lists of areas which have been updated
     old_dirtyRects[:] = new_dirtyRects
     new_dirtyRects[:] = []
+
+def sliders(event, new_dirtyRects):
+    global carsNum
+    global stepsNum
+    # slider functionality: left slows down, right speeds up
+    if event.key == pygame.K_LEFT:
+        stepsNum -= 1 if stepsNum > 0 else 0
+    elif event.key == pygame.K_RIGHT:
+        stepsNum += 1
+
+    # slider functionality: up adds cars, down subtracts (once cars reach their goal)
+    elif event.key == pygame.K_UP:
+        carsNum += 1
+    elif event.key == pygame.K_DOWN:
+        carsNum -= 1 if carsNum > 0 else 0
+
+    #TODO: the following does not work at all.
+    # Write slider state to screen
+    # new_dirtyRects.append(font.render_to(screen, (10,10), "Total cars: {0}    Steps per frame: {1}".format(carsNum, stepsNum) , fgcolor = pygame.color.Color("black")))
+    # new_dirtyRects.append(font.render_to(screen, (10,size[1]-25), "Steps per frame: {0}".format(stepsNum) ))
 # -------------------------------------------------
 
 if __name__=="__main__":

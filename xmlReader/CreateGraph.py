@@ -37,7 +37,9 @@ class Parking:
 
 
 class Street:
-    newid = itertools.count()
+    @staticmethod
+    def newid(c=itertools.count()):
+        return next(c)
     def __init__(self, street_name = "No Name", nodes = None):
         if nodes != None:
             self.id = Street.newid()
