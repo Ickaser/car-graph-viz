@@ -7,10 +7,35 @@ Built by Isaac Wheeler on internship at CNR-IIA, Montelibretti campus. Begun 23/
 Goal: a toy problem to which AI methods can be applied, to showcase the possibility for improvement in real-time traffic 
 flow. The program will take an XML file as input, which will allow real map data to be used as a graph structure.  
 
-At present: the program generates a graph with semirandom coordinates and structure, and dots representing cars move 
-along the edges of the graph, randomly picking a new direction of travel each time they reach a node.  
+At present: the program reads a graph from XML, and dots representing cars appear at a randomly selected node with only one connection,
+randomly select a goal node (also with one connection), plan the shortest-distance route, and follow that route.
+The cars maintain some distance between each other, overlapping only somewhat at nodes, and effectively occupy a certain amount of space within the graph
 No data files are generated as the program is run--it runs the simulation in a way that allows visualization, and nothing more.
 
+Ignoring visualization entirely, the following script (with appropriately defined variables) would run a simulation indefinitely, with a constant number of cars.
+
+```
+graph = graphGen.Graph(xml = "storage.xml", lanes = True)
+graph.xmlGetStreetProperties()
+carList = [cars.Car(graph, carSettings) for i in range(carsNum)]
+for step in totalSimulationSteps:
+    for car in carList:
+        if car.updatePosition():
+            carList.remove(car)
+            del car
+    while len(carList) \< carsNum:
+        carList.append(cars.Car(graph, carSettings))
+```
+
+TODO:  
+* Improve heuristic weight function (Graph class).
+* Implement stochastic failure to follow route plan (Car class, updatePostion function)
+* Implement online search for route plan: within Car class?
+* Implement ACS (ant colony system) intelligence within route planning.
+* Data generation (Car class). Currently, no information is saved by the simulation.
+* Cars can get completely blocked: good, that is physical. What then?
+* Stop cars from overlapping at busy nodes (fudge coordinates? collision detection?)
+* Document sections of code which could be fine-tuned
 
 To simulate traffic slowdown, there are two main ideas at the moment:
 1. `weights`: Add a system of capacities and weights to the graph which lowers the effective speed limit along an edge as the number 
@@ -88,28 +113,3 @@ The Car class depends heavily on both the Graph and Position classes above.
 
 
 
-
-Ignoring visualization entirely, the following script (with appropriately defined variables) would run a simulation indefinitely, with a constant number of cars.
-
-```
-graph = graphGen.Graph(xml = "storage.xml", lanes = True)
-graph.xmlGetStreetProperties()
-carList = [cars.Car(graph, carSettings) for i in range(carsNum)]
-for step in totalSimulationSteps:
-    for car in carList:
-        if car.updatePosition():
-            carList.remove(car)
-            del car
-    while len(carList) \< carsNum:
-        carList.append(cars.Car(graph, carSettings))
-```
-
-TODO:  
-* Improve heuristic weight function (Graph class).
-* Implement stochastic failure to follow route plan (Car class, updatePostion function)
-* Implement online search for route plan: within Car class?
-* Implement ACS (ant colony system) intelligence within route planning.
-* Data generation (Car class). Currently, no information is saved by the simulation.
-* Cars can get completely blocked: good, that is physical. What then?
-* Stop cars from overlapping at busy nodes (fudge coordinates? collision detection?)
-* Document sections of code which could be fine-tuned
