@@ -307,7 +307,7 @@ class Car:
         # Compute the values on which the behavior is based
         veloDiff = nextCar.velocity - self.velocity
         distDiff = self.pos.toNext - nextCar.pos.toNext     
-        decelDist = 2 * self.carSize + self.accel * sum(range(int(nextCar.velocity/self.accel), int(self.velocity/self.accel)+1)) 
+        decelDist = 2 * self.carSize + self.accel * sum(range(int(nextCar.velocity/self.accel)-1, int(self.velocity/self.accel)+1)) 
 
         # car ahead is actually at same position: fudge the distance a little so they spread apart
         if distDiff == 0:
@@ -316,7 +316,7 @@ class Car:
         elif veloDiff > 0 and distDiff > self.carSize:
             return self.accel if veloDiff >= self.accel else veloDiff
         # car ahead is slower and close: decelerate
-        elif veloDiff < 0 and distDiff <= decelDist:
+        elif veloDiff < 0 and distDiff <= decelDist + self.velocity:
             return -self.accel if self.velocity >= self.accel else -self.velocity
         # car ahead is slower or same speed but far away: ignore car ahead (call other function)
         elif veloDiff < 0 and distDiff > decelDist:

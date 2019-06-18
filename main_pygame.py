@@ -8,20 +8,21 @@ import numpy as np
 
 # window size to be used by pygame. (X, Y)
 # gets used in a number of functions, as it turns out
-size = (650, 420)
+size = (650, 455)
 
 
 # configurable values used when generating cars
 carSettings = dict(
     carSize = 13,
     carAccel = 3,
-    nodeWait = 1,
+    nodeWait = 5,
     randomBehavior = False,
 )
 lanes = True
 weights = False
-carsNum = 50
+carsNum = 40
 stepsNum = 1
+fps = 20
 
 # should be in same directory as this file
 xmlFilename = "storage_a.xml"
@@ -33,8 +34,10 @@ def main():
 
     global stepsNum
     global carsNum
+    global size
 
     start_pygame()
+    font = pygame.freetype.SysFont("Times New Roman", 14)
 
     graph = graphGen.Graph(nodeNum = 8, xml = xmlFilename, weighted=weights, lanes = lanes)
     graph_init(graph, size)
@@ -74,17 +77,7 @@ def main():
                 running = False
 
             elif event.type == pygame.KEYDOWN:
-                # slider functionality: left slows down, right speeds up
-                if event.key == pygame.K_LEFT:
-                    stepsNum -= 1 if stepsNum > 0 else 0
-                elif event.key == pygame.K_RIGHT:
-                    stepsNum += 1
-
-                # slider functionality: up adds cars, down subtracts (once cars reach their goal)
-                elif event.key == pygame.K_UP:
-                    carsNum += 1
-                elif event.key == pygame.K_DOWN:
-                    carsNum -= 1 if carsNum > 0 else 0
+                sliders(event, new_dirtyRects)
         
         # update system state
         update_system(stepsNum, carList, graph)           
@@ -94,7 +87,7 @@ def main():
         update_screen(screen, map, carList, old_dirtyRects, new_dirtyRects)
 
         # tick the system clock
-        clock.tick(20) #framerate of 20 fps
+        clock.tick(fps) #framerate of 20 fps
 
 # -------------------------------------------------------------------------
 # Encapsulation functions (just to make the main more readable)
@@ -201,6 +194,26 @@ def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
     # reset the lists of areas which have been updated
     old_dirtyRects[:] = new_dirtyRects
     new_dirtyRects[:] = []
+
+def sliders(event, new_dirtyRects):
+    global carsNum
+    global stepsNum
+    # slider functionality: left slows down, right speeds up
+    if event.key == pygame.K_LEFT:
+        stepsNum -= 1 if stepsNum > 0 else 0
+    elif event.key == pygame.K_RIGHT:
+        stepsNum += 1
+
+    # slider functionality: up adds cars, down subtracts (once cars reach their goal)
+    elif event.key == pygame.K_UP:
+        carsNum += 1
+    elif event.key == pygame.K_DOWN:
+        carsNum -= 1 if carsNum > 0 else 0
+
+    #TODO: the following does not work at all.
+    # Write slider state to screen
+    # new_dirtyRects.append(font.render_to(screen, (10,10), "Total cars: {0}    Steps per frame: {1}".format(carsNum, stepsNum) , fgcolor = pygame.color.Color("black")))
+    # new_dirtyRects.append(font.render_to(screen, (10,size[1]-25), "Steps per frame: {0}".format(stepsNum) ))
 # -------------------------------------------------
 
 if __name__=="__main__":

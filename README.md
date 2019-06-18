@@ -2,17 +2,6 @@
 
 Built by Isaac Wheeler on internship at CNR-IIA, Montelibretti campus. Begun 23/5/2019.  
 
-TODO:
-Improve readability of cars.py (car behavior functions)  
-Use **kwargs to declare car attributes (cars.py, main_pygame.py)
-Improve car following (cars still get too close, when moving slow at nodes)  
-Data generation
-Cars can get completely blocked: good, that is physical. What then?
-Stop cars from overlapping at busy nodes (fudge coordinates? collision detection?)
-
-Document cars.py
-Example script
-Document tuning/adjustable areas
 
 
 Goal: a toy problem to which AI methods can be applied, to showcase the possibility for improvement in real-time traffic 
@@ -45,7 +34,7 @@ The structure is as follows:
     * `"coords"` for XY coordinates 
     * `"connect"` for a list of connected points.
     * `"capacity"` for an int, indicating max number of cars in the node. Used only with lanes implementation.
-    * `"population"` for a list of Positions of the cars which are on the node. Used only with lanes implementation
+    * `"population"` for a list of Positions of the cars which are on the node. Used only with lanes implementation.
 * `graph.edges`: A dictionary of dictionaries. 
     * Access an edge with a tuple of the two points connected (in either order), 
     * Access an edge's attributes with string key:
@@ -78,28 +67,49 @@ The `Position` class depends heavily on the `Graph` class, as described above. T
     * `pos.length`: The length of the edge, as taken from the graph information.
     * `pos.toNext`: The Euclidean distance along the current edge to `nodeTo`. This property is **dependent on the direction** of travel.
     * `pos.atNode`: a Boolean indicating whether the position is equal to the position of `nodeTo`. If `nodeFrom` has a lower index than `nodeTo`, this means `pos.dist` == `pos.length`; if `nodeFrom` has the higher index, `pos.dist` == 0. In both cases, `pos.toNext` == 0.
-    * `pos.eqTol`: Set at initialization of instance, defaults to 10. Sets a margin within which two positions are considered to be equal by the `==` operator
+    * `pos.eqTol`: *Currently unused.* Set at initialization of instance, defaults to 10. Sets a margin within which two positions are considered to be equal by the `==` operator
     
 The Car class depends heavily on both the Graph and Position classes above.
 
 * Arguments to set when initializing the class:
     * graph: should be an instance of the above Graph class. Car behavior is determined by `graph.lanes` and `graph.weights`.
-    * randomBehavior: defaults to `True` at the moment. No implementation yet for `False`. If `False`, should have a goal and seek the destination.
-    * carSize: defaults to `5`. Should be a size in pixels; gets used internally within `lanes` behavior to keep cars from overlapping. May be used in car visualization.
-    * accel: defaults to `5`. The acceleration and deceleration of the cars; `5` means at each position update, the car's velocity (in pixels per frame) changes by at most 5.
-    * pos: defaults to `0`. Currently unused; once implemented, will give a starting position to the car.
-* Functions and methods:
-    * `updatePosition()`: Implements the entire movement system of the car. Call it once per update cycle: if the car is at a node, moves to the next edge (by calling `Position.ChangeNodes(nextNode)`), or if car is on edge, updates the `velocity` attribute (according to base, `weights`, or `lanes` implementation, which are checked internally), then moves along edge according to `velocity` attribute by calling `Position.update(velocity)`.  
-    This method is fairly large and contains all of the logic for each individual car's movement behavior.
+    * carBehavior: a `dict`, with items corresponding to any of the following: (each has default value if not specified)
+        * randomBehavior: defaults to `True` at the moment. No implementation yet for `False`. If `False`, should have a goal and seek the destination.
+        * carSize: defaults to `5`. Should be a size in pixels; gets used internally within `lanes` behavior to keep cars from overlapping. May be used in car visualization.
+        * accel: defaults to `5`. The acceleration and deceleration of the cars; `5` means at each position update, the car's velocity (in pixels per frame) changes by at most 5.
+        * nodeWait: defaults to 1. number of time steps it takes a car to pass through a node
+        * pos: defaults to `0`. Currently unused; if implemented, would give a starting position to the car.
+* Methods:
+    * `updatePosition()`: Implements the entire movement system of the car. Call it once per update cycle. Contains foundation of movement logic; makes calls to `Car.nodeBehavior()`, `Car.accelWithFollowing()`, `Car.accelWithoutFollowing()`, and `Position.update` as appropriate.
+    * `nodeBehavior`: Handles all the behavior of the car at a node; may wait, move to the next edge, or delete the car if the car has reached its goal node.
+    * `getNextCarEdge()`: Finds the next car ahead of the self on the given edge. Uses the ordering of the cars on the list, which is easier and less error-prone than computing it arithmetically.
+    * `accelWithFollowing(nextCar)`: Takes as argument another car, which should be a car ahead of the self; implements the main acceleration handling which keeps the cars from overlapping with themselves. May also make a call to `accelWithoutFollowing()`.
+    * `accelWithoutFollowing()`: Computes the acceleration so that the car will travel to the next node smoothly and stop when it reaches the node.
 
 
 
 
-Essential functions to call to run a simulation:  
+Ignoring visualization entirely, the following script (with appropriately defined variables) would run a simulation indefinitely, with a constant number of cars.
 
+```
+graph = graphGen.Graph(xml = "storage.xml", lanes = True)
+graph.xmlGetStreetProperties()
+carList = [cars.Car(graph, carSettings) for i in range(carsNum)]
+for step in totalSimulationSteps:
+    for car in carList:
+        if car.updatePosition():
+            carList.remove(car)
+            del car
+    while len(carList) \< carsNum:
+        carList.append(cars.Car(graph, carSettings))
+```
 
 TODO:  
 * Improve heuristic weight function (Graph class).
 * Implement stochastic failure to follow route plan (Car class, updatePostion function)
 * Implement online search for route plan: within Car class?
 * Implement ACS (ant colony system) intelligence within route planning.
+* Data generation (Car class). Currently, no information is saved by the simulation.
+* Cars can get completely blocked: good, that is physical. What then?
+* Stop cars from overlapping at busy nodes (fudge coordinates? collision detection?)
+* Document sections of code which could be fine-tuned
