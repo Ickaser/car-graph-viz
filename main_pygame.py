@@ -13,7 +13,7 @@ size = (650, 455)
 
 # configurable values used when generating cars
 carSettings = dict(
-    carSize = 13,
+    carSize = 20,
     carAccel = 3,
     nodeWait = 5,
     randomBehavior = False,
@@ -77,7 +77,7 @@ def main():
                 running = False
 
                 # print final results
-                np.savetxt("results.txt", graph.history, fmt="%s")
+                np.savetxt("results.txt", graph.history, fmt="%s", header = "Next run begins here.")
 
             elif event.type == pygame.KEYDOWN:
                 sliders(event, new_dirtyRects)

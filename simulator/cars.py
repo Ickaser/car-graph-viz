@@ -417,7 +417,7 @@ class Car:
                 # execute any other code dealing with car reaching goal
                 # TODO
                 travelDist = sum( [ self.graph.edges[(self.history[i], self.history[i+1])]["length"] for i in range(len(self.history)-1) ] ) 
-                outputStr = "Lifetime (steps): {0} \t Distance traveled: {1} \t Average speed: {2} \t Overall route: {3}".format(self.lifetime, travelDist, int(travelDist/self.lifetime), self.history)
+                outputStr = "Lifetime (time steps): {0} \t Distance traveled: {1} \t Average speed: {2:.2f} \t Overall route: {3}".format(self.lifetime, travelDist, travelDist/float(self.lifetime), self.history)
                 self.graph.history.append(outputStr)
 
                 # delete the car, return true
