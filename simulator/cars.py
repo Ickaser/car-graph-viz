@@ -224,6 +224,7 @@ class Car:
         self.accel = carBehavior.get("accel", 5)
         self.nodeWait = carBehavior.get("nodeWait", 1)
         self.carSize = carBehavior.get("carSize", 5) 
+        self.mistakes = carBehavior.get("mistakes", False)
 
         self.currentWait = 0
 
@@ -410,6 +411,7 @@ class Car:
         if self.randomBehavior:
             newNode = np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"])
         else:
+            # check if has reached goal node
             if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
                 self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
                 self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].remove(self)
@@ -423,8 +425,23 @@ class Car:
                 # delete the car, return true
                 del self
                 return True
+            # has not reached goal node yet
             else:
-                newNode = self.plan[0]
+                if not self.mistakes:
+                    # go to correct node
+                    newNode = self.plan[0]
+                else:
+                    # 9/10 chance of correct node, 1/10 chance of picking a wrong node
+                    diceRoll = np.random.randint(0, 10)
+                    if diceRoll < 9:
+                        newNode = self.plan[0]
+                    else:
+                        opts = self.graph.nodes[self.pos.nodeTo]["connect"]
+                        ind = opts.index(self.plan[0])
+                        newNode = opts[ind-1]
+                        # create new route plan
+                        self.plan = self.routePlan(newNode, self.nodeGoal)
+
 
         # if using lanes, check if the next position along the desired edge is available
         if self.lanes:
