@@ -226,6 +226,8 @@ class Car:
         self.carSize = carBehavior.get("carSize", 5) 
 
         self.currentWait = 0
+
+        self.lifetime = 0
         # TUNING
         # Inital car position
 
@@ -269,6 +271,8 @@ class Car:
         Takes no arguments; returns True if car has reached goal node, otherwise returns False. \n
         If the car is at a node, calls self.nodeBehavior; if the car is at node, accelerates and moves
         """
+        # for data generation purposes, increment lifetime
+        self.lifetime += 1
 
         # if at node, move to the next edge (or end movement and remove the car)
         if self.pos.atNode:
@@ -412,6 +416,9 @@ class Car:
 
                 # execute any other code dealing with car reaching goal
                 # TODO
+                travelDist = sum( [ self.graph.edges[(self.history[i], self.history[i+1])]["length"] for i in range(len(self.history)-1) ] ) 
+                outputStr = "Lifetime (steps): {0} \t Distance traveled: {1} \t Average speed: {2} \t Overall route: {3}".format(self.lifetime, travelDist, int(travelDist/self.lifetime), self.history)
+                self.graph.history.append(outputStr)
 
                 # delete the car, return true
                 del self

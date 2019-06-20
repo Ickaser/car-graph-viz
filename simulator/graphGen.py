@@ -67,6 +67,10 @@ class Graph:
                 self.endNodes.append(i)
 
 
+        # create a list accessible to everything with the graph, which can track data
+        self.history = []
+
+
 
     def connect(self, point1, point2, oneWay = False):
         """
