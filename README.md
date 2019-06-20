@@ -12,7 +12,7 @@ randomly select a goal node (also with one connection), plan the shortest-distan
 The cars maintain some distance between each other, overlapping only somewhat at nodes, and effectively occupy a certain amount of space within the graph
 No data files are generated as the program is run--it runs the simulation in a way that allows visualization, and nothing more.
 
-Ignoring visualization entirely, the following script (with appropriately defined variables) would run a simulation indefinitely, with a constant number of cars.
+Ignoring visualization entirely, the following script (with appropriately defined variables) would run a simulation with `totalSimulationSteps` as a number of overall steps, with a constant number of cars, saving the results afterward to `results.txt`.
 
 ```
 graph = graphGen.Graph(xml = "storage.xml", lanes = True)
@@ -25,16 +25,17 @@ for step in totalSimulationSteps:
             del car
     while len(carList) \< carsNum:
         carList.append(cars.Car(graph, carSettings))
+numpy.savetxt("results.txt", graph.history, fmt="%s", header = "Next run begins here.")
 ```
 
 TODO:  
 * Improve heuristic weight function (Graph class).
 * Implement stochastic failure to follow route plan (Car class, updatePostion function)
 * Implement online search for route plan: within Car class?
-* Implement ACS (ant colony system) intelligence within route planning.
-* Data generation (Car class). Currently, no information is saved by the simulation.
+* Implement ACS (ant colony system) intelligence within route planning?
+* Improve usefulness of data generation (Car class). 
 * Cars can get completely blocked: good, that is physical. What then?
-* Stop cars from overlapping at busy nodes (fudge coordinates? collision detection?)
+* Stop cars from visually overlapping at busy nodes (fudge coordinates? collision detection?)
 * Document sections of code which could be fine-tuned
 
 To simulate traffic slowdown, there are two main ideas at the moment:
