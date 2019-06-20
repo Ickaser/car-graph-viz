@@ -76,6 +76,9 @@ def main():
                 # exit loop
                 running = False
 
+                # print final results
+                np.savetxt("results.txt", graph.history, fmt="%s")
+
             elif event.type == pygame.KEYDOWN:
                 sliders(event, new_dirtyRects)
         
