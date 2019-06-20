@@ -224,6 +224,7 @@ class Car:
         self.accel = carBehavior.get("accel", 5)
         self.nodeWait = carBehavior.get("nodeWait", 1)
         self.carSize = carBehavior.get("carSize", 5) 
+        self.mistakes = carBehavior.get("mistakes", False)
 
         self.currentWait = 0
 
@@ -410,6 +411,7 @@ class Car:
         if self.randomBehavior:
             newNode = np.random.choice(self.graph.nodes[self.pos.nodeTo]["connect"])
         else:
+            # check if has reached goal node
             if self.pos.nodeTo == self.nodeGoal or len(self.plan) == 0:
                 self.graph.nodes[self.pos.nodeTo]["population"].remove(self.pos)
                 self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].remove(self)
@@ -417,14 +419,29 @@ class Car:
                 # execute any other code dealing with car reaching goal
                 # TODO
                 travelDist = sum( [ self.graph.edges[(self.history[i], self.history[i+1])]["length"] for i in range(len(self.history)-1) ] ) 
-                outputStr = "Lifetime (steps): {0} \t Distance traveled: {1} \t Average speed: {2} \t Overall route: {3}".format(self.lifetime, travelDist, int(travelDist/self.lifetime), self.history)
+                outputStr = "Lifetime (time steps): {0} \t Distance traveled: {1} \t Average speed: {2:.2f} \t Overall route: {3}".format(self.lifetime, travelDist, travelDist/float(self.lifetime), self.history)
                 self.graph.history.append(outputStr)
 
                 # delete the car, return true
                 del self
                 return True
+            # has not reached goal node yet
             else:
-                newNode = self.plan[0]
+                if not self.mistakes:
+                    # go to correct node
+                    newNode = self.plan[0]
+                else:
+                    # 9/10 chance of correct node, 1/10 chance of picking a wrong node
+                    diceRoll = np.random.randint(0, 10)
+                    if diceRoll < 9:
+                        newNode = self.plan[0]
+                    else:
+                        opts = self.graph.nodes[self.pos.nodeTo]["connect"]
+                        ind = opts.index(self.plan[0])
+                        newNode = opts[ind-1]
+                        # create new route plan
+                        self.plan = self.routePlan(newNode, self.nodeGoal)
+
 
         # if using lanes, check if the next position along the desired edge is available
         if self.lanes:

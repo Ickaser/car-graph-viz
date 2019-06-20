@@ -17,10 +17,11 @@ carSettings = dict(
     carAccel = 3,
     nodeWait = 5,
     randomBehavior = False,
+    mistakes = True
 )
 lanes = True
 weights = False
-carsNum = 40
+carsNum = 5
 stepsNum = 1
 fps = 20
 
@@ -35,6 +36,7 @@ def main():
     global stepsNum
     global carsNum
     global size
+    global font
 
     start_pygame()
     font = pygame.freetype.SysFont("Times New Roman", 14)
@@ -77,13 +79,15 @@ def main():
                 running = False
 
                 # print final results
-                np.savetxt("results.txt", graph.history, fmt="%s")
+                np.savetxt("results.txt", graph.history, fmt="%s", header = "Next run begins here.")
 
             elif event.type == pygame.KEYDOWN:
                 sliders(event, new_dirtyRects)
+                # new_dirtyRects.append(font.render_to(screen, (10,size[1]-20), "Total cars: {0}    Steps per frame: {1}".format(carsNum, stepsNum) , fgcolor = pygame.color.Color("black")))
         
         # update system state
         update_system(stepsNum, carList, graph)           
+
 
 
         # draw system to screen
@@ -170,6 +174,7 @@ def update_system(stepsNum, carList, graph):
 
 def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
 
+    
     # draw the map again, to overwrite old car positions
     screenObj.blit(mapObj, (0, 0))
 
@@ -183,7 +188,7 @@ def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
         # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(255 - colorOffset * i, colorOffset*i, 0, 255), car.pos.coords, car.carSize / 2))
 
         #various colors, random based on car id
-        new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color((int(id(car))/100 +128) % 255, int(id(car))/100 % 255, 0, 255), car.pos.coords, car.carSize / 2))
+        new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color((int(id(car))/4 +128) % 255, int(id(car))/5 % 255, 100, 255), car.pos.coords, car.carSize / 2))
 
         #red one way, blue the other
         # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color("red" if car.pos.direction else "blue"), car.pos.coords, car.carSize / 2))
@@ -191,9 +196,14 @@ def update_screen(screenObj, mapObj, carList, old_dirtyRects, new_dirtyRects):
         #red at stopped, more green at speed
         # new_dirtyRects.append(pygame.draw.circle(screenObj, pygame.Color(*(255 - 5*car.velocity, 5*car.velocity, 0, 255)), car.pos.coords, car.carSize / 2))
 
-    
-    # update the parts of the screen which have changed
-    pygame.display.update(old_dirtyRects + new_dirtyRects)
+    new_dirtyRects.append(font.render_to(screenObj, (10,size[1]-20), "Total cars: {0}    Steps per frame: {1}".format(len(carList), stepsNum) , fgcolor = pygame.color.Color("black")))
+
+
+    # EITHER: update the parts of the screen which have changed (caused problems with font visualization, it seems)
+    # pygame.display.update(old_dirtyRects + new_dirtyRects)
+
+    # OR: update the whole screen
+    pygame.display.update()
     # reset the lists of areas which have been updated
     old_dirtyRects[:] = new_dirtyRects
     new_dirtyRects[:] = []
