@@ -470,8 +470,8 @@ class Car:
             self.plan.pop(0)
 
         # add self to new population list, if using weights or lanes
-        if self.weighted or self.lanes:
-            self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
+        # if self.weighted or self.lanes:
+        self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["population"][self.pos.direction].append(self)
 
         self.currentWait = 0
         self.speedLimit = self.graph.edges[(self.pos.nodeFrom, self.pos.nodeTo)]["speed"]
