@@ -9,8 +9,9 @@ flow. The program will take an XML file as input, which will allow real map data
 
 At present: the program reads a graph from XML, and dots representing cars appear at a randomly selected node with only one connection,
 randomly select a goal node (also with one connection), plan the shortest-distance route, and follow that route.
-The cars maintain some distance between each other, overlapping only somewhat at nodes, and effectively occupy a certain amount of space within the graph
-No data files are generated as the program is run--it runs the simulation in a way that allows visualization, and nothing more.
+The cars maintain some distance between each other, overlapping only somewhat at nodes, and effectively occupy a certain amount of space within the graph.  
+Pressing up and down adds and removes cars from the simulation; pressing left and right changes the number of time steps between frames shown on screen.  
+When the program exits, it first writes some results to `results.txt`.
 
 Ignoring visualization entirely, the following script (with appropriately defined variables) would run a simulation with `totalSimulationSteps` as a number of overall steps, with a constant number of cars, saving the results afterward to `results.txt`.
 
@@ -18,33 +19,32 @@ Ignoring visualization entirely, the following script (with appropriately define
 graph = graphGen.Graph(xml = "storage.xml", lanes = True)
 graph.xmlGetStreetProperties()
 carList = [cars.Car(graph, carSettings) for i in range(carsNum)]
-for step in totalSimulationSteps:
+for step in range(totalSimulationSteps):
     for car in carList:
         if car.updatePosition():
             carList.remove(car)
             del car
-    while len(carList) \< carsNum:
+    while len(carList) < carsNum:
         carList.append(cars.Car(graph, carSettings))
 numpy.savetxt("results.txt", graph.history, fmt="%s", header = "Next run begins here.")
 ```
 
 TODO:  
-* Improve heuristic weight function (Graph class).
-* Implement online search for route plan: within Car class?
+* Possibly improve heuristic weight function for A* route planning (`graphGen.Graph.heuristicWeight()`). Currently uses distance/speed limit.
 * Implement ACS (ant colony system) intelligence within route planning?
 * Improve usefulness of data generation (Car class). 
 * Cars can get completely blocked: good, that is physical. What then?
 * Stop cars from visually overlapping at busy nodes (fudge coordinates? collision detection?)
 * Document sections of code which could be fine-tuned
 
-To simulate traffic slowdown, there are two main ideas at the moment:
+To simulate traffic slowdown, there are two methods:
 1. `weights`: Add a system of capacities and weights to the graph which lowers the effective speed limit along an edge as the number 
 of cars on that edge increases. This method is loosely implemented, but needs significant refinement and tuning
 before it will resemble normal traffic flow.  
 2. `lanes`: Disallow car overlay and slow down cars so that they do not collide visually; separate them on opposite sides of the 
 edge.  
 To use either implementation, initialize the Graph class with either `lanes = True` or `weights = True`; Positions and Cars 
-initialized with the graph will inherit their behavior from that attribute. Using both is untested and discouraged. 
+initialized with the graph will inherit their behavior from that attribute. Using both at the same time is untested and discouraged. 
 
 Three main classes are used to run the simulation; they are separated to make the code easier to work with, but depend heavily on 
 each other.
