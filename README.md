@@ -2,12 +2,9 @@
 
 Built by Isaac Wheeler on internship at CNR-IIA, Montelibretti campus, from 23/5/2019 to 21/6/2019.  
 
+Confirmed to run in Python 2 and 3. Depends on pygame and numpy
 
-
-Goal: a toy problem to which AI methods can be applied, to showcase the possibility for improvement in real-time traffic 
-flow. The program will take an XML file as input, which will allow real map data to be used as a graph structure.  
-
-At present: the program reads a graph from XML, and dots representing cars appear at a randomly selected node with only one connection,
+The program reads a graph from XML, and dots representing cars appear at a randomly selected node with only one connection,
 randomly select a goal node (also with one connection), plan the shortest-distance route, and follow that route.
 The cars maintain some distance between each other, overlapping only somewhat at nodes, and effectively occupy a certain amount of space within the graph.  
 Pressing up and down adds and removes cars from the simulation; pressing left and right changes the number of time steps between frames shown on screen.  
