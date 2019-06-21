@@ -128,15 +128,23 @@ class Graph:
 
             self.edges[nodeKey]["speed"] = edge.speed_limit
             self.edges[nodeKey]["length"] = int(edge.node_distance)
+
+            # TUNING
+            if self.weighted:
+                self.edges[nodeKey]["weighted speed"] = [self.edges[nodeKey]["speed"], self.edges[nodeKey]["speed"] ]
+
+                # Set capacity of each street to 5 cars--this should be adjusted to fit real data
+                # Acts as a minimum threshold: below this value, no slowdown of cars on edge
+                self.edges[nodeKey]["capacity"] = 5
+            # /TUNING
             
-            # TODO for now, all nodes have capacity of 1
+            # TUNING
         for i in range(len(self.nodes)):
+            # Set capacity to 1 for all nodes
             if self.lanes:
                 self.nodes[i]["capacity"] = 1
+            # /TUNING
 
-        #     if self.weighted:
-        #         self.edges[i]["weighted speed"] = [self.edges[i]["speed"], self.edges[i]["speed"] ]
-        #         self.edges[i]["capacity"] = np.random.randint(1, 5) * 3
         
 
 

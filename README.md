@@ -30,7 +30,6 @@ numpy.savetxt("results.txt", graph.history, fmt="%s", header = "Next run begins 
 
 TODO:  
 * Improve heuristic weight function (Graph class).
-* Implement stochastic failure to follow route plan (Car class, updatePostion function)
 * Implement online search for route plan: within Car class?
 * Implement ACS (ant colony system) intelligence within route planning?
 * Improve usefulness of data generation (Car class). 
